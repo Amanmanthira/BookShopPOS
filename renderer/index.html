@@ -1,0 +1,229 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https: http:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'">
+  <title>Kade POS Enterprise</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+
+  <!-- ==================== 1. LOGIN SCREEN ==================== -->
+  <section id="login" class="auth-wrap hide">
+    <div class="auth-top-controls">
+      <!-- Light / Dark Mode Toggle Switch -->
+      <div class="theme-switch-pill" id="loginThemeToggle" title="Toggle Light / Dark Mode">
+        <button type="button" class="theme-switch-btn active" data-mode="light">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+        <button type="button" class="theme-switch-btn" data-mode="dark">
+          <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+      <div class="langsw"></div>
+    </div>
+
+    <div class="auth-card">
+      <div class="auth-brand-badge">
+        <div class="brand-icon-box">
+          <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M6 12h12"/></svg>
+        </div>
+        <div>
+          <span class="auth-version-tag">ENTERPRISE POS</span>
+          <h1 class="auth-title">KadePOS</h1>
+        </div>
+      </div>
+
+      <p class="auth-subtitle" data-i18n="signInSub">Sign in to your point of sale terminal</p>
+
+      <form id="loginForm" class="auth-form">
+        <label class="field-wrap">
+          <span class="field-label" data-i18n="username">Username</span>
+          <div class="input-icon-group">
+            <svg class="input-icon" viewBox="0 0 24 24"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <input name="username" autocomplete="username" placeholder="e.g. admin" required autofocus>
+          </div>
+        </label>
+
+        <label class="field-wrap">
+          <span class="field-label" data-i18n="password">Password</span>
+          <div class="input-icon-group">
+            <svg class="input-icon" viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+            <input id="loginPass" name="password" type="password" autocomplete="current-password" placeholder="••••••••" required>
+            <button type="button" id="togglePass" class="input-eye-btn" title="Toggle visibility">
+              <svg viewBox="0 0 24 24"><path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"/><circle cx="12" cy="12" r="3"/></svg>
+            </button>
+          </div>
+        </label>
+
+        <button type="submit" class="btn btn-primary btn-block btn-lg" data-i18n="signIn">
+          Sign In
+        </button>
+      </form>
+
+      <div class="auth-footer-status">
+        <span class="status-indicator-dot"></span>
+        <span>LocalShop Database Connected · v1.2</span>
+      </div>
+    </div>
+  </section>
+
+  <!-- ==================== 2. LOCK SCREEN ==================== -->
+  <section id="lock" class="auth-wrap hide">
+    <div class="auth-top-controls">
+      <div class="theme-switch-pill" id="lockThemeToggle">
+        <button type="button" class="theme-switch-btn active" data-mode="light">
+          <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+        </button>
+        <button type="button" class="theme-switch-btn" data-mode="dark">
+          <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+        </button>
+      </div>
+      <div class="langsw"></div>
+    </div>
+
+    <div class="auth-card lock-card">
+      <div class="lock-header">
+        <div class="lock-icon-box">
+          <svg viewBox="0 0 24 24"><rect x="3" y="11" width="18" height="11" rx="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg>
+        </div>
+        <div>
+          <span class="lock-badge" data-i18n="suspended">TERMINAL SUSPENDED</span>
+          <h2 class="lock-title">Subscription Payment Required</h2>
+        </div>
+      </div>
+
+      <p class="lock-desc" data-i18n="suspendedMsg">
+        The monthly software license is pending payment. Please transfer the subscription fee to the Super Admin's bank account below to reactivate your terminal.
+      </p>
+
+      <!-- Super Admin Bank Account Credit Card Element -->
+      <div class="superadmin-credit-card">
+        <div class="card-hologram-shine"></div>
+        <div class="card-top-row">
+          <span class="card-brand-label">SUPER ADMIN BANK ACCOUNT</span>
+          <span class="card-subscription-tag">DUE: 25th OF MONTH</span>
+        </div>
+        <div class="card-number-row">
+          <span id="lkAccNo">8030194935</span>
+          <button type="button" class="btn-card-copy" id="lkCopyBtn">
+            <svg viewBox="0 0 24 24"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg>
+            <span data-i18n="copy">Copy</span>
+          </button>
+        </div>
+        <div class="card-bottom-row">
+          <div>
+            <div style="font-size:9.5px; opacity:0.8;">ACCOUNT HOLDER</div>
+            <div class="card-holder-name" id="lkAccName">H.A AMAN MANTHIRA HAPUARACHCHI</div>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:9.5px; opacity:0.8;">BANK & BRANCH</div>
+            <b id="lkBankName">Commercial Bank</b> · <span id="lkBankBranch">Gampaha</span>
+          </div>
+        </div>
+      </div>
+
+      <!-- Vendor Renewal Code Unlock Form -->
+      <form id="lockCodeForm" class="auth-form" style="gap:10px; margin-bottom:14px; background:var(--bg-input); padding:16px; border-radius:14px; border:1px solid rgba(91,82,249,0.3);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <b style="font-size:12.5px; color:var(--text-main);" data-i18n="enterCode">Enter Monthly Renewal Code</b>
+          <span class="pill ok" style="font-size:10px;">Instant Reactivation</span>
+        </div>
+        <p class="small muted" style="margin:0; font-size:11.5px;">Paid already? Enter the 16-character code from your vendor to instantly unlock and resume sales.</p>
+        <div style="display:flex; gap:8px;">
+          <input id="lockActivationCode" name="code" placeholder="e.g. KP-XXXX-XXXX-XXXX" style="flex:1; font-family:monospace; font-weight:700; font-size:14px; letter-spacing:1.5px; text-transform:uppercase; text-align:center;" required autocomplete="off">
+          <button type="submit" class="btn btn-primary" id="lockCodeSubmitBtn" style="white-space:nowrap; padding:0 20px;" data-i18n="activateCode">
+            Activate & Unlock
+          </button>
+        </div>
+      </form>
+
+      <div style="display:flex; align-items:center; gap:8px; margin: 4px 0 12px; color:var(--text-dim); font-size:11px;">
+        <div style="flex:1; height:1px; background:var(--border);"></div>
+        <span style="font-weight:600; text-transform:uppercase; letter-spacing:0.5px;">Or Super Admin Override</span>
+        <div style="flex:1; height:1px; background:var(--border);"></div>
+      </div>
+
+      <!-- Super Admin Unlock Form -->
+      <form id="lockForm" class="auth-form" style="gap:10px;">
+        <span class="small muted" data-i18n="overrideNote">Super Admin manual unlock credentials:</span>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+          <input name="username" placeholder="Super Admin Username" required>
+          <input name="password" type="password" placeholder="Password" required>
+        </div>
+        <button type="submit" class="btn btn-danger btn-block" data-i18n="unlock">
+          Verify & Unlock Terminal
+        </button>
+      </form>
+    </div>
+  </section>
+
+  <!-- ==================== 3. MAIN APPLICATION ==================== -->
+  <section id="app" class="hide">
+    <!-- Sidebar (Mirrors the reference image) -->
+    <aside class="sidebar">
+      <!-- Brand at top -->
+      <div class="sidebar-brand">
+        <div class="brand-text-col">
+          <span class="brand-name">KadePOS</span>
+        </div>
+      </div>
+
+      <!-- Navigation Menu -->
+      <nav id="nav" class="nav-menu"></nav>
+
+      <div class="sidebar-spacer"></div>
+
+      <!-- User Section at bottom of sidebar -->
+      <div class="sidebar-user-section">
+        <p class="user-greeting" id="userGreeting">Hello, User!</p>
+        <div class="sidebar-user-card" id="userProfileCard" title="Click to change password">
+          <div class="user-avatar-circle" id="av">A</div>
+          <div style="overflow:hidden; flex:1;">
+            <h4 class="user-name-title" id="uname">Admin User</h4>
+            <p class="user-role-label" id="urole">Super Admin</p>
+          </div>
+          <button type="button" class="btn-profile-key" id="btnChangeMyPwd" title="Change Password" style="background:transparent; border:none; color:var(--text-dim); cursor:pointer; padding:6px; display:flex; align-items:center; border-radius:8px;">
+            <svg viewBox="0 0 24 24" width="16" height="16" fill="none" stroke="currentColor" stroke-width="2.2"><circle cx="8" cy="15" r="4"/><path d="M10.85 12.15L19 4M18 5l2 2M15 8l2 2"/></svg>
+          </button>
+        </div>
+
+        <!-- Controls: Light / Dark Toggle Switch & Logout -->
+        <div class="sidebar-bottom-controls">
+          <div class="theme-switch-pill" id="appThemeToggle" title="Toggle Light / Dark Mode">
+            <button type="button" class="theme-switch-btn active" data-mode="light" title="Light Theme">
+              <svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="5"/><path d="M12 1v2M12 21v2M4.22 4.22l1.42 1.42M18.36 18.36l1.42 1.42M1 12h2M21 12h2M4.22 19.78l1.42-1.42M18.36 5.64l1.42-1.42"/></svg>
+            </button>
+            <button type="button" class="theme-switch-btn" data-mode="dark" title="Dark Theme">
+              <svg viewBox="0 0 24 24"><path d="M21 12.79A9 9 0 1 1 11.21 3 7 7 0 0 0 21 12.79z"/></svg>
+            </button>
+          </div>
+
+          <div class="langsw"></div>
+
+          <button id="logout" class="sidebar-logout-btn" title="Sign Out">
+            <svg viewBox="0 0 24 24"><path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4M16 17l5-5-5-5M21 12H9"/></svg>
+            <span data-i18n="logout">Log out</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+
+    <!-- Main Content Area -->
+    <div class="main-content">
+      <!-- Universal Subscription Alert Banner (Displays near 25th of month) -->
+      <div id="banner" class="payment-alert-banner hide"></div>
+
+      <!-- Dynamic Screen Views -->
+      <main id="view" class="view-container"></main>
+    </div>
+  </section>
+
+  <!-- Dedicated Standard Thermal Printable Receipt Container for Thermal Printers -->
+  <div id="printableReceiptArea" class="printable-thermal-receipt-area" style="display:none;"></div>
+
+  <!-- Load Food Catalog & Main Logic -->
+  <script src="food-catalog.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>

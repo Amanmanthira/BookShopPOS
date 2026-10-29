@@ -1,0 +1,10 @@
+{
+  "name": "kade-pos",
+  "version": "1.0.0",
+  "description": "Desktop POS for small retail/food shops (Electron + SQL Server)",
+  "main": "main.js",
+  "scripts": { "start": "electron .", "dist": "electron-builder" },
+  "dependencies": { "bcryptjs": "^2.4.3", "mssql": "^10.0.2" },
+  "devDependencies": { "electron": "^30.0.0", "electron-builder": "^24.13.3" },
+  "build": { "appId": "lk.kade.pos", "productName": "Kade POS", "win": { "target": "nsis" } }
+}
