@@ -6,7 +6,7 @@ const bcrypt = require('bcryptjs');
 
 
 const DB = {
-  server: 'localhost', database: 'LocalShop', user: 'sa', password: 'sapins@071',
+  server: 'localhost', database: 'BookShop', user: 'sa', password: 'sapins@071',
   options: { encrypt: false, trustServerCertificate: true }
 };
 const C = 'Cashier', M = 'Store Manager', A = 'Super Admin';
@@ -16,7 +16,7 @@ const r2 = x => Math.round(x * 100) / 100;
 
 const SCHEMA = [
 `IF OBJECT_ID('Users','U') IS NULL CREATE TABLE Users(Id INT IDENTITY PRIMARY KEY, Username NVARCHAR(50) NOT NULL UNIQUE, FullName NVARCHAR(100) NOT NULL, PasswordHash NVARCHAR(100) NOT NULL, Role NVARCHAR(20) NOT NULL CHECK (Role IN ('Cashier','Store Manager','Super Admin')), Active BIT NOT NULL DEFAULT 1, Permissions NVARCHAR(500) NULL)`,
-`IF OBJECT_ID('Items','U') IS NULL CREATE TABLE Items(Id INT IDENTITY PRIMARY KEY, Name NVARCHAR(100) NOT NULL, Category NVARCHAR(50) NOT NULL, Price DECIMAL(12,2) NOT NULL, Stock INT NOT NULL DEFAULT 0, Barcode NVARCHAR(50) NULL, ImageUrl NVARCHAR(500) NULL, Active BIT NOT NULL DEFAULT 1)`,
+`IF OBJECT_ID('Items','U') IS NULL CREATE TABLE Items(Id INT IDENTITY PRIMARY KEY, Name NVARCHAR(100) NOT NULL, Category NVARCHAR(50) NOT NULL, Price DECIMAL(12,2) NOT NULL, Stock INT NOT NULL DEFAULT 0, Barcode NVARCHAR(50) NULL, ImageUrl NVARCHAR(500) NULL, ItemType NVARCHAR(20) NOT NULL DEFAULT 'Product', IsService BIT NOT NULL DEFAULT 0, Active BIT NOT NULL DEFAULT 1)`,
 `IF OBJECT_ID('Sales','U') IS NULL CREATE TABLE Sales(Id INT IDENTITY PRIMARY KEY, InvoiceNo NVARCHAR(30) NULL, CashierId INT NOT NULL REFERENCES Users(Id), Total DECIMAL(12,2) NOT NULL, Paid DECIMAL(12,2) NOT NULL, Balance DECIMAL(12,2) NOT NULL, PaymentMethod NVARCHAR(20) NOT NULL DEFAULT 'Cash', Discount DECIMAL(12,2) NOT NULL DEFAULT 0, CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME())`,
 `IF OBJECT_ID('SaleItems','U') IS NULL CREATE TABLE SaleItems(Id INT IDENTITY PRIMARY KEY, SaleId INT NOT NULL REFERENCES Sales(Id), ItemId INT NOT NULL REFERENCES Items(Id), ItemName NVARCHAR(100) NOT NULL, Qty INT NOT NULL, UnitPrice DECIMAL(12,2) NOT NULL, DiscountPct DECIMAL(5,2) NOT NULL DEFAULT 0, LineTotal DECIMAL(12,2) NOT NULL)`,
 `IF OBJECT_ID('Settings','U') IS NULL CREATE TABLE Settings([Key] NVARCHAR(50) PRIMARY KEY, [Value] NVARCHAR(200) NOT NULL)`,
@@ -25,6 +25,78 @@ const SCHEMA = [
 `IF OBJECT_ID('GRNItems','U') IS NULL CREATE TABLE GRNItems(Id INT IDENTITY PRIMARY KEY, GrnId INT NOT NULL REFERENCES GRNs(Id) ON DELETE CASCADE, ItemId INT NOT NULL REFERENCES Items(Id), ItemName NVARCHAR(100) NOT NULL, Qty INT NOT NULL, UnitCost DECIMAL(12,2) NOT NULL DEFAULT 0, LineTotal DECIMAL(12,2) NOT NULL DEFAULT 0, BatchNo NVARCHAR(50) NULL, ExpiryDate NVARCHAR(20) NULL)`,
 `IF OBJECT_ID('SubscriptionCodes','U') IS NULL CREATE TABLE SubscriptionCodes(Code NVARCHAR(50) PRIMARY KEY, Months INT NOT NULL DEFAULT 1, UsedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME(), Period NVARCHAR(10) NOT NULL, UsedBy NVARCHAR(100) NOT NULL, Note NVARCHAR(200) NULL)`
 ];
+
+const DEFAULT_BOOKSHOP_ITEMS = [
+  // Stationery
+  { name: 'Atlas Chooty Pen Blue', category: 'Stationery', price: 40, stock: 200, barcode: '8901234001', isService: 0 },
+  { name: 'Atlas Chooty Pen Black', category: 'Stationery', price: 40, stock: 200, barcode: '8901234002', isService: 0 },
+  { name: 'Atlas Chooty Pen Red', category: 'Stationery', price: 40, stock: 100, barcode: '8901234003', isService: 0 },
+  { name: 'Natraj 2B Pencil', category: 'Stationery', price: 30, stock: 250, barcode: '8901234020', isService: 0 },
+  { name: 'Maped Technic Eraser', category: 'Stationery', price: 25, stock: 180, barcode: '8901234025', isService: 0 },
+  { name: 'Plastic Ruler 30cm', category: 'Stationery', price: 60, stock: 100, barcode: '8901234030', isService: 0 },
+  { name: 'Mathematical Instrument Box', category: 'Stationery', price: 450, stock: 40, barcode: '8901234035', isService: 0 },
+  { name: 'Atlas CR Book 80 Pgs Single Rule', category: 'Stationery', price: 180, stock: 120, barcode: '8901234010', isService: 0 },
+  { name: 'Atlas CR Book 120 Pgs Single Rule', category: 'Stationery', price: 260, stock: 100, barcode: '8901234011', isService: 0 },
+  { name: 'Atlas CR Book 200 Pgs Hard Cover', category: 'Stationery', price: 420, stock: 80, barcode: '8901234013', isService: 0 },
+  { name: 'Exercise Book 80 Pgs Single Rule', category: 'Stationery', price: 110, stock: 150, barcode: '8901234015', isService: 0 },
+  { name: 'Exercise Book 80 Pgs Square Rule', category: 'Stationery', price: 110, stock: 150, barcode: '8901234016', isService: 0 },
+  { name: 'A4 Paper Ream 80gsm (500 Sheets)', category: 'Stationery', price: 1850, stock: 35, barcode: '8901234050', isService: 0 },
+  { name: 'UHU Glue Stick 8.2g', category: 'Stationery', price: 190, stock: 70, barcode: '8901234040', isService: 0 },
+  { name: 'Clear Box File A4', category: 'Stationery', price: 380, stock: 50, barcode: '8901234060', isService: 0 },
+  // Books
+  { name: 'Grade 5 Scholarship Model Papers', category: 'Books', price: 450, stock: 50, barcode: '9789551234011', isService: 0 },
+  { name: 'O/L Mathematics Past Papers (10 Yrs)', category: 'Books', price: 650, stock: 35, barcode: '9789551234028', isService: 0 },
+  { name: 'O/L Science Past Papers & Answers', category: 'Books', price: 680, stock: 35, barcode: '9789551234035', isService: 0 },
+  { name: 'English-Sinhala Pocket Dictionary', category: 'Books', price: 550, stock: 25, barcode: '9789551234042', isService: 0 },
+  { name: 'Children Illustrated Story Book', category: 'Books', price: 250, stock: 45, barcode: '9789551234059', isService: 0 },
+  // Toys & Keytags
+  { name: 'Cartoon Rubber Keytag', category: 'Toys & Keytags', price: 150, stock: 80, barcode: 'KTG-001', isService: 0 },
+  { name: 'Metal Luxury Keytag', category: 'Toys & Keytags', price: 220, stock: 60, barcode: 'KTG-002', isService: 0 },
+  { name: 'Die-Cast Mini Pullback Toy Car', category: 'Toys & Keytags', price: 350, stock: 40, barcode: 'TOY-001', isService: 0 },
+  { name: '3x3 Speed Magic Rubik Cube', category: 'Toys & Keytags', price: 480, stock: 30, barcode: 'TOY-002', isService: 0 },
+  { name: 'Bubble Wand Soap Blower', category: 'Toys & Keytags', price: 120, stock: 60, barcode: 'TOY-003', isService: 0 },
+  { name: 'Decorative Gift Wrapping Sheet', category: 'Toys & Keytags', price: 50, stock: 150, barcode: 'GFT-001', isService: 0 },
+  // Photocopy & Printing Services (IsService = 1, Stock = 0)
+  { name: 'Photocopy A4 B/W (Single Sided)', category: 'Photocopy & Print', price: 10, stock: 0, barcode: 'SRV-PC-A4S', isService: 1 },
+  { name: 'Photocopy A4 B/W (Double Sided)', category: 'Photocopy & Print', price: 15, stock: 0, barcode: 'SRV-PC-A4D', isService: 1 },
+  { name: 'Photocopy A3 B/W', category: 'Photocopy & Print', price: 25, stock: 0, barcode: 'SRV-PC-A3', isService: 1 },
+  { name: 'Color Photocopy / Print A4', category: 'Photocopy & Print', price: 50, stock: 0, barcode: 'SRV-PR-A4C', isService: 1 },
+  { name: 'Color Photocopy / Print A3', category: 'Photocopy & Print', price: 120, stock: 0, barcode: 'SRV-PR-A3C', isService: 1 },
+  { name: 'Computer Document Print A4 B/W', category: 'Photocopy & Print', price: 15, stock: 0, barcode: 'SRV-PR-A4BW', isService: 1 },
+  { name: 'Passport / Photo Print (4 Copies)', category: 'Photocopy & Print', price: 200, stock: 0, barcode: 'SRV-PR-PHOTO', isService: 1 },
+  // Laminating & Binding (IsService = 1, Stock = 0)
+  { name: 'ID Card / License Lamination', category: 'Lamination & Binding', price: 80, stock: 0, barcode: 'SRV-LAM-ID', isService: 1 },
+  { name: 'A4 Document / Certificate Lamination', category: 'Lamination & Binding', price: 150, stock: 0, barcode: 'SRV-LAM-A4', isService: 1 },
+  { name: 'A3 Document / Poster Lamination', category: 'Lamination & Binding', price: 300, stock: 0, barcode: 'SRV-LAM-A3', isService: 1 },
+  { name: 'Spiral Binding Small (Up to 50 pgs)', category: 'Lamination & Binding', price: 180, stock: 0, barcode: 'SRV-BND-SM', isService: 1 },
+  { name: 'Spiral Binding Large (50-150 pgs)', category: 'Lamination & Binding', price: 280, stock: 0, barcode: 'SRV-BND-LG', isService: 1 },
+  // Typing & Document Services (IsService = 1, Stock = 0)
+  { name: 'Sinhala Letter Typing (Per Page)', category: 'Typing & Services', price: 200, stock: 0, barcode: 'SRV-TYP-SIN', isService: 1 },
+  { name: 'English Letter / Agreement Typing', category: 'Typing & Services', price: 150, stock: 0, barcode: 'SRV-TYP-ENG', isService: 1 },
+  { name: 'Professional CV / Resume Creation', category: 'Typing & Services', price: 500, stock: 0, barcode: 'SRV-TYP-CV', isService: 1 },
+  { name: 'Document Scanning to PDF / Email', category: 'Typing & Services', price: 30, stock: 0, barcode: 'SRV-SCN-PDF', isService: 1 },
+  { name: 'Exam Paper / Book Typesetting', category: 'Typing & Services', price: 180, stock: 0, barcode: 'SRV-TYP-SET', isService: 1 },
+  { name: 'General Custom Service / Open Job', category: 'Typing & Services', price: 100, stock: 0, barcode: 'SRV-CUSTOM', isService: 1 }
+];
+
+async function seedBookshopCatalog(txOrPool) {
+  for (const it of DEFAULT_BOOKSHOP_ITEMS) {
+    const itemType = it.isService ? 'Service' : 'Product';
+    await txOrPool.request()
+      .input('n', sql.NVarChar, it.name)
+      .input('c', sql.NVarChar, it.category)
+      .input('p', sql.Decimal(12, 2), it.price)
+      .input('s', sql.Int, it.stock)
+      .input('b', sql.NVarChar, it.barcode)
+      .input('it', sql.NVarChar, itemType)
+      .input('is', sql.Bit, it.isService ? 1 : 0)
+      .query(`
+        IF NOT EXISTS(SELECT 1 FROM Items WHERE Name=@n AND Active=1)
+          INSERT INTO Items(Name,Category,Price,Stock,Barcode,ItemType,IsService,Active)
+          VALUES(@n,@c,@p,@s,@b,@it,@is,1)
+      `);
+  }
+}
 
 async function initDb() {
   const boot = await new sql.ConnectionPool({ ...DB, database: 'master' }).connect();
@@ -39,6 +111,10 @@ async function initDb() {
       ALTER TABLE Sales ADD Discount DECIMAL(12,2) NOT NULL DEFAULT 0;
     IF COL_LENGTH('Items', 'ImageUrl') IS NULL
       ALTER TABLE Items ADD ImageUrl NVARCHAR(500) NULL;
+    IF COL_LENGTH('Items', 'ItemType') IS NULL
+      ALTER TABLE Items ADD ItemType NVARCHAR(20) NOT NULL DEFAULT 'Product';
+    IF COL_LENGTH('Items', 'IsService') IS NULL
+      ALTER TABLE Items ADD IsService BIT NOT NULL DEFAULT 0;
     IF COL_LENGTH('Users', 'Permissions') IS NULL
       ALTER TABLE Users ADD Permissions NVARCHAR(500) NULL;
     IF OBJECT_ID('SubscriptionCodes','U') IS NULL
@@ -47,23 +123,24 @@ async function initDb() {
     UPDATE Settings SET [Value] = 'H.A Aman Manthira Hapuarachchi' WHERE [Key] = 'accName';
     UPDATE Settings SET [Value] = '8030194935' WHERE [Key] = 'accNumber';
     UPDATE Settings SET [Value] = 'Gampaha' WHERE [Key] = 'bankBranch';
+
+    -- Deactivate legacy restaurant/food sample items if present
+    UPDATE Items SET Active = 0 WHERE Name IN (
+      'Chicken Fried Rice', 'Egg Fried Rice', 'Chicken Kottu', 'Cheese Kottu',
+      'Fish Cutlet', 'Egg Roll', 'Vegetable Roti', 'Milk Tea', 'Lime Juice', 'Coca-Cola 400ml'
+    );
   `);
   const q = () => pool.request();
   if (!(await q().query('SELECT COUNT(*) c FROM Users')).recordset[0].c)
     await q().input('h', sql.NVarChar, bcrypt.hashSync('admin123', 10))
       .query(`INSERT INTO Users(Username,FullName,PasswordHash,Role,Permissions) VALUES('admin','Super Admin',@h,'Super Admin','*')`);
-  if (!(await q().query('SELECT COUNT(*) c FROM Items')).recordset[0].c)
-    await q().query(`INSERT INTO Items(Name,Category,Price,Stock,ImageUrl) VALUES
-      ('Chicken Fried Rice','Fried Rice',650,50,'assets/food/chicken-fried-rice.jpg'),
-      ('Egg Fried Rice','Fried Rice',500,50,'assets/food/egg-fried-rice.jpg'),
-      ('Chicken Kottu','Kottu',700,50,'assets/food/chicken-kottu.jpg'),
-      ('Cheese Kottu','Kottu',850,40,'assets/food/cheese-kottu.jpg'),
-      ('Fish Cutlet','Short Eats',90,100,'assets/food/fish-cutlet.jpg'),
-      ('Egg Roll','Short Eats',120,100,'assets/food/chinese-egg-roll.jpg'),
-      ('Vegetable Roti','Short Eats',80,100,'assets/food/vegetable-roti.jpg'),
-      ('Milk Tea','Beverages',80,100,'assets/food/ceylon-milk-tea.jpg'),
-      ('Lime Juice','Beverages',150,60,'assets/food/fresh-lime-juice.jpg'),
-      ('Coca-Cola 400ml','Beverages',180,60,'assets/food/coca-cola.jpg')`);
+  
+  // Seed Bookshop & Services catalog if empty or only legacy items were present
+  const activeCount = (await q().query('SELECT COUNT(*) c FROM Items WHERE Active=1')).recordset[0].c;
+  if (activeCount === 0) {
+    await seedBookshopCatalog(pool);
+  }
+
   const defaults = {
     fee: '3000',
     dueDay: '25',
@@ -73,13 +150,13 @@ async function initDb() {
     accNumber: '8030194935',
     bankBranch: 'Gampaha',
     bankNotes: 'Please state your store name and bill invoice ID as payment reference.',
-    shopName: 'Kade POS Supermarket & Cafe',
-    shopTagline: 'Fresh Quality Groceries & Food',
-    shopAddress: 'No 124, High Level Road, Colombo 03',
+    shopName: 'Amectar Bookshop & Communication',
+    shopTagline: 'Books, Stationery, Gifts & Print/Copy Services',
+    shopAddress: 'No. 45, Station Road, Colombo',
     shopPhone: '071 234 5678 / 011 234 5678',
-    shopTaxNo: 'BR-2024-99881',
-    receiptHeader: 'WELCOME TO KADE POS',
-    receiptFooter: 'Thank you for shopping with us! Please come again.',
+    shopTaxNo: 'BR-2024-BOOK99',
+    receiptHeader: 'WELCOME TO AMECTAR BOOKSHOP',
+    receiptFooter: 'Thank you for shopping with us! Photocopy, Print & Lamination Available.',
     receiptPaperWidth: '80mm',
     receiptAutoPrint: '1'
   };
@@ -438,19 +515,33 @@ handle('users:changePassword', ADMIN, async ({ id, newPassword }) => {
   return true;
 });
 
-handle('items:list', ALL, async () => (await pool.request().query('SELECT * FROM Items WHERE Active=1 ORDER BY Category,Name')).recordset);
-handle('items:save', MA, async ({ id, name, category, price, stock, barcode, imageUrl }) => {
-  price = +price; stock = parseInt(stock);
+handle('items:list', ALL, async () => (await pool.request().query(
+  'SELECT Id, Name, Category, Price, Stock, Barcode, ImageUrl, Active, ISNULL(IsService, 0) AS IsService, ISNULL(ItemType, \'Product\') AS ItemType FROM Items WHERE Active=1 ORDER BY Category,Name'
+)).recordset);
+
+handle('items:save', MA, async ({ id, name, category, price, stock, barcode, imageUrl, itemType, isService }) => {
+  price = +price; stock = parseInt(stock) || 0;
+  const isServ = (isService || itemType === 'Service') ? 1 : 0;
+  const iType = isServ ? 'Service' : 'Product';
   if (!name?.trim() || !category?.trim()) throw new Error('Name and category are required');
-  if (!(price >= 0) || !(stock >= 0)) throw new Error('Price and stock must be zero or more');
+  if (!(price >= 0)) throw new Error('Price must be zero or more');
+  if (!isServ && !(stock >= 0)) throw new Error('Stock must be zero or more');
   const rq = pool.request().input('n', sql.NVarChar, name.trim()).input('c', sql.NVarChar, category.trim())
-    .input('p', sql.Decimal(12, 2), price).input('s', sql.Int, stock).input('b', sql.NVarChar, barcode?.trim() || null)
-    .input('img', sql.NVarChar, imageUrl?.trim() || null);
-  if (id) await rq.input('id', sql.Int, id).query('UPDATE Items SET Name=@n,Category=@c,Price=@p,Stock=@s,Barcode=@b,ImageUrl=@img WHERE Id=@id');
-  else await rq.query('INSERT INTO Items(Name,Category,Price,Stock,Barcode,ImageUrl) VALUES(@n,@c,@p,@s,@b,@img)');
+    .input('p', sql.Decimal(12, 2), price).input('s', sql.Int, isServ ? 0 : stock).input('b', sql.NVarChar, barcode?.trim() || null)
+    .input('img', sql.NVarChar, imageUrl?.trim() || null)
+    .input('it', sql.NVarChar, iType)
+    .input('is', sql.Bit, isServ);
+  if (id) await rq.input('id', sql.Int, id).query('UPDATE Items SET Name=@n,Category=@c,Price=@p,Stock=@s,Barcode=@b,ImageUrl=@img,ItemType=@it,IsService=@is WHERE Id=@id');
+  else await rq.query('INSERT INTO Items(Name,Category,Price,Stock,Barcode,ImageUrl,ItemType,IsService) VALUES(@n,@c,@p,@s,@b,@img,@it,@is)');
 });
+
 handle('items:delete', MA, async ({ id }) => { // soft delete keeps sales history intact
   await pool.request().input('id', sql.Int, id).query('UPDATE Items SET Active=0 WHERE Id=@id');
+});
+
+handle('items:seedBookshop', ADMIN, async () => {
+  await seedBookshopCatalog(pool);
+  return true;
 });
 
 handle('sales:checkout', ALL, async ({ lines, paid, paymentMethod, billDiscount }) => {
@@ -458,14 +549,31 @@ handle('sales:checkout', ALL, async ({ lines, paid, paymentMethod, billDiscount 
   const tx = new sql.Transaction(pool); await tx.begin();
   try {
     let subtotal = 0; const out = [];
-    for (const l of lines) { // prices come from the DB, never from the UI
+    for (const l of lines) {
       const qty = parseInt(l.qty), disc = Math.min(100, Math.max(0, +l.disc || 0));
       if (!(qty > 0)) throw new Error('Invalid quantity');
-      const r = (await new sql.Request(tx).input('id', sql.Int, l.id).input('q', sql.Int, qty)
-        .query('UPDATE Items SET Stock=Stock-@q OUTPUT inserted.Id,inserted.Name,inserted.Price WHERE Id=@id AND Active=1 AND Stock>=@q')).recordset[0];
-      if (!r) throw new Error(`Insufficient stock or item unavailable (#${l.id})`);
-      const lt = r2(r.Price * qty * (1 - disc / 100)); subtotal += lt;
-      out.push({ id: r.Id, name: r.Name, price: r.Price, qty, disc, total: lt });
+
+      const it = (await new sql.Request(tx).input('id', sql.Int, l.id)
+        .query('SELECT Id, Name, Price, Stock, ISNULL(IsService, 0) AS IsService, ISNULL(ItemType, \'Product\') AS ItemType FROM Items WHERE Id=@id AND Active=1')).recordset[0];
+      if (!it) throw new Error(`Item unavailable (#${l.id})`);
+
+      let unitPrice = it.Price;
+      let itemName = it.Name;
+
+      if (it.IsService) {
+        // Service items: allow custom price and name overrides from Service Calculator
+        if (l.customPrice !== undefined && +l.customPrice >= 0) unitPrice = +l.customPrice;
+        if (l.customName && l.customName.trim()) itemName = l.customName.trim();
+        // Do not deduct stock for service items
+      } else {
+        // Physical Product: require Stock >= qty and deduct
+        const r = (await new sql.Request(tx).input('id', sql.Int, l.id).input('q', sql.Int, qty)
+          .query('UPDATE Items SET Stock=Stock-@q OUTPUT inserted.Id,inserted.Name,inserted.Price WHERE Id=@id AND Active=1 AND Stock>=@q')).recordset[0];
+        if (!r) throw new Error(`Insufficient stock for "${it.Name}" (Available: ${it.Stock}, Requested: ${qty})`);
+      }
+
+      const lt = r2(unitPrice * qty * (1 - disc / 100)); subtotal += lt;
+      out.push({ id: it.Id, name: itemName, price: unitPrice, qty, disc, total: lt, isService: !!it.IsService });
     }
     subtotal = r2(subtotal);
     const discAmount = r2(Math.max(0, Math.min(subtotal, +billDiscount || 0)));
@@ -509,13 +617,13 @@ handle('sales:checkout', ALL, async ({ lines, paid, paymentMethod, billDiscount 
       balance,
       paymentMethod: method,
       shopSettings: {
-        shopName: st.shopName || 'Kade POS Supermarket & Cafe',
-        shopTagline: st.shopTagline || 'Fresh Quality Groceries & Food',
-        shopAddress: st.shopAddress || 'No 124, High Level Road, Colombo 03',
+        shopName: st.shopName || 'Amectar Bookshop & Communication',
+        shopTagline: st.shopTagline || 'Books, Stationery, Gifts & Print/Copy Services',
+        shopAddress: st.shopAddress || 'No. 45, Station Road, Colombo',
         shopPhone: st.shopPhone || '071 234 5678 / 011 234 5678',
-        shopTaxNo: st.shopTaxNo || 'BR-2024-99881',
-        receiptHeader: st.receiptHeader || 'WELCOME TO KADE POS',
-        receiptFooter: st.receiptFooter || 'Thank you for shopping with us! Please come again.',
+        shopTaxNo: st.shopTaxNo || 'BR-2024-BOOK99',
+        receiptHeader: st.receiptHeader || 'WELCOME TO AMECTAR BOOKSHOP',
+        receiptFooter: st.receiptFooter || 'Thank you for shopping with us! Photocopy, Print & Lamination Available.',
         receiptPaperWidth: st.receiptPaperWidth || '80mm',
         receiptAutoPrint: st.receiptAutoPrint !== '0' ? '1' : '0'
       }
@@ -549,9 +657,9 @@ handle('dashboard:overview', ALL, async () => {
   const stockRow = (await q().query(`
     SELECT 
       COUNT(*) totalItems,
-      SUM(CASE WHEN Stock <= 5 THEN 1 ELSE 0 END) lowStockCount,
-      ISNULL(SUM(Price * Stock), 0) totalValuation,
-      ISNULL(SUM(Stock), 0) totalUnits
+      SUM(CASE WHEN ISNULL(IsService, 0) = 0 AND Stock <= 5 THEN 1 ELSE 0 END) lowStockCount,
+      ISNULL(SUM(CASE WHEN ISNULL(IsService, 0) = 0 THEN Price * Stock ELSE 0 END), 0) totalValuation,
+      ISNULL(SUM(CASE WHEN ISNULL(IsService, 0) = 0 THEN Stock ELSE 0 END), 0) totalUnits
     FROM Items
     WHERE Active = 1
   `)).recordset[0];
@@ -559,7 +667,7 @@ handle('dashboard:overview', ALL, async () => {
   const lowStockItems = (await q().query(`
     SELECT TOP 8 Id, Name, Category, Price, Stock
     FROM Items
-    WHERE Active = 1 AND Stock <= 10
+    WHERE Active = 1 AND ISNULL(IsService, 0) = 0 AND Stock <= 10
     ORDER BY Stock ASC, Name ASC
   `)).recordset;
 

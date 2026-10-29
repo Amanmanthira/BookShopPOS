@@ -23,6 +23,7 @@ const D = {
   receipts: ['Receipt & Print', 'රිසිට්පත් සහ මුද්‍රණය'],
   users: ['Users', 'පරිශීලකයින්'],
   subs: ['Subscription', 'දායකත්වය'],
+  help: ['User Guide & Help', 'භාවිතා කිරීමේ උපදෙස්'],
 
   // Receipt & Print Settings
   receiptSettings: ['Receipt Customization & Thermal Print', 'රිසිට්පත් සැකසුම් සහ මුද්‍රණය'],
@@ -66,7 +67,16 @@ const D = {
   categorySales: ['Sales by Category (Last 30 Days)', 'කාණ්ඩ අනුව විකුණුම් (දින 30)'],
   paymentBreakdown: ['Payment Method Breakdown (Cash vs Card)', 'මුදල් සහ කාඩ්පත් ගෙවීම් බෙදීම'],
   staffLeaderboard: ['Cashier Sales Ranking', 'අයකැමි කාර්යසාධනය'],
-  inventoryAlerts: ['Low Stock & Beverage Restock', 'අඩු තොග සහ බීම වර්ග ලැබීම්'],
+  inventoryAlerts: ['Low Stock Inventory Alerts', 'අඩු තොග භාණ්ඩ'],
+  copyPrintCalc: ['Copy, Print & Service Calculator (F2)', 'ෆොටෝකොපි සහ මුද්‍රණ ගණකය (F2)'],
+  quickItem: ['Quick Custom Item (F3)', 'ක්ෂණික භාණ්ඩයක් (F3)'],
+  itemType: ['Item Type', 'භාණ්ඩ වර්ගය'],
+  typeProduct: ['Physical Product (Track Stock)', 'භාණ්ඩය (තොග ගණනය වේ)'],
+  typeService: ['Service / Print Job (No Stock Limit)', 'සේවාව (තොග සීමා රහිත)'],
+  serviceBadge: ['⚙️ Service', '⚙️ සේවාව'],
+  genBarcode: ['Generate Barcode', 'බාර්කෝඩ් සාදන්න'],
+  printBarcodeLabels: ['Print Barcode Labels', 'බාර්කෝඩ් ලේබල් මුද්‍රණය'],
+  loadBookshopDefaults: ['Load Default Bookshop Catalog', 'පොත්හල් පෙරනිමි භාණ්ඩ ඇතුළත් කරන්න'],
   today: ['Today', 'අද'],
   aov: ['Avg Order Value (AOV)', 'සාමාන්‍ය බිල්පත් අගය'],
   totalUnits: ['Total Units in Stock', 'මුළු තොග ඒකක'],
@@ -122,7 +132,7 @@ const D = {
   supplier: ['Supplier / Vendor', 'සැපයුම්කරු'],
   invoiceRef: ['Invoice / Ref No', 'ඉන්වොයිස් අංකය'],
   unitCost: ['Unit Cost (LKR)', 'ඒකක පිරිවැය (රු.)'],
-  batchNo: ['Batch No (Beverages/Dairy)', 'කාණ්ඩ අංකය (Batch No)'],
+  batchNo: ['Batch No / Lot No', 'කාණ්ඩ අංකය (Batch No)'],
   expiryDate: ['Expiry Date', 'කල් ඉකුත්වන දිනය'],
   updatePrice: ['Update Selling Price?', 'විකුණුම් මිල යාවත්කාලීන කරන්නද?'],
   totalCost: ['Total Goods Value', 'මුළු පිරිවැය'],
@@ -267,6 +277,17 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const fmt = n => 'LKR ' + Number(n || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
 const hue = s => [...String(s)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7);
+const catIcon = c => {
+  if (!c) return '📦';
+  const l = String(c).toLowerCase();
+  if (l.includes('stationery') || l.includes('pen') || l.includes('pencil') || l.includes('office') || l.includes('paper')) return '✏️';
+  if (l.includes('book') || l.includes('novel') || l.includes('past paper') || l.includes('education')) return '📚';
+  if (l.includes('toy') || l.includes('keytag') || l.includes('gift')) return '🎁';
+  if (l.includes('photo') || l.includes('copy') || l.includes('print')) return '🖨️';
+  if (l.includes('laminat') || l.includes('bind')) return '🛡️';
+  if (l.includes('typ') || l.includes('doc') || l.includes('cv') || l.includes('scan') || l.includes('sting')) return '⌨️';
+  return '📦';
+};
 const C = 'Cashier', M = 'Store Manager', A = 'Super Admin';
 
 /* SVG Icons */
@@ -278,7 +299,8 @@ const ICON = {
   reports: '<line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/>',
   receipts: '<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
   users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
-  subs: '<rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>'
+  subs: '<rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>',
+  help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>'
 };
 
 let me = null, sub = null, items = [], cart = [], cat = 'All', tab = 'dashboard', poll;
@@ -629,11 +651,14 @@ const SYSTEM_MODULES = [
   { key: 'items', name: 'Inventory & Items', desc: 'Product catalog, pricing, category management & stock levels', icon: ICON.items },
   { key: 'grn', name: 'Goods Received Note (GRN)', desc: 'Supplier stock entry, batch tracking & purchase costs', icon: ICON.grn },
   { key: 'reports', name: 'Financial & Sales Reports', desc: 'Daily revenue, item-wise sales and cashier performance', icon: ICON.reports },
-  { key: 'receipts', name: 'Receipt Settings', desc: 'Thermal printer 58mm/80mm format, header & footer design', icon: ICON.receipts }
+  { key: 'receipts', name: 'Receipt Settings', desc: 'Thermal printer 58mm/80mm format, header & footer design', icon: ICON.receipts },
+  { key: 'help', name: 'User Guide & Help', desc: 'Step-by-step cashier tutorials, shortcuts & operations guide', icon: ICON.help }
 ];
 
 function userHasPerm(k) {
   if (!me) return false;
+  // User Guide & Help is open to all staff and roles
+  if (k === 'help') return true;
   // Super Admin always has full master access to everything
   if (me.role === A) return true;
   // User accounts management & subscription settings are restricted to Super Admin only by default
@@ -658,7 +683,8 @@ const TABS = {
   reports: [vReports, null],
   receipts: [vReceiptSettings, null],
   users: [vUsers, null],
-  subs: [vSubs, null]
+  subs: [vSubs, null],
+  help: [vHelp, null]
 };
 
 function shell() {
@@ -1348,6 +1374,406 @@ function renderStandardReceiptHtml(r, cfg = {}) {
 }
 
 /* ==========================================================================
+   PHOTOCOPY, PRINTING, LAMINATION & TYPING SPEED CALCULATOR
+   ========================================================================== */
+function showPrintServiceCalculator(onAdd) {
+  let activeTab = 'copy';
+
+  const COPY_PRESETS = [
+    { id: 'A4_BW_1', name: 'Photocopy A4 B/W (1-Side)', rate: 10, icon: '📄' },
+    { id: 'A4_BW_2', name: 'Photocopy A4 B/W (Double Sided)', rate: 15, icon: '📑' },
+    { id: 'A4_COL', name: 'Color Photocopy / Print A4', rate: 50, icon: '🌈' },
+    { id: 'A4_DOC_BW', name: 'Computer Document Print A4 B/W', rate: 15, icon: '🖨️' },
+    { id: 'A3_BW', name: 'Photocopy A3 B/W (Large Sheet)', rate: 25, icon: '📰' },
+    { id: 'A3_COL', name: 'Color Photocopy / Print A3', rate: 120, icon: '🎨' },
+    { id: 'PHOTO_4X6', name: 'Photo Print 4x6 / Passport (4 Photos)', rate: 200, icon: '📷' }
+  ];
+
+  const LAM_PRESETS = [
+    { id: 'ID', name: 'ID Card / License Lamination', rate: 80, icon: '🪪' },
+    { id: 'A4', name: 'A4 Document / Certificate Lamination', rate: 150, icon: '📜' },
+    { id: 'A3', name: 'A3 Document / Poster Lamination', rate: 300, icon: '🖼️' }
+  ];
+
+  const TYP_PRESETS = [
+    { id: 'sin_ltr', name: 'Sinhala Letter / Document Typing (Per Page)', rate: 200, icon: '⌨️' },
+    { id: 'eng_ltr', name: 'English Letter / Agreement Typing (Per Page)', rate: 150, icon: '💻' },
+    { id: 'cv', name: 'Professional CV / Resume Creation', rate: 500, icon: '👔' },
+    { id: 'scan', name: 'Document Scanning to PDF / Email (Per Page)', rate: 30, icon: '📥' },
+    { id: 'typeset', name: 'Exam Paper / Book Typesetting (Per Page)', rate: 180, icon: '📖' }
+  ];
+
+  const BND_PRESETS = [
+    { id: 'sp_sm', name: 'Spiral / Comb Binding Small (Up to 50 pgs)', rate: 180, icon: '🌀' },
+    { id: 'sp_lg', name: 'Spiral / Comb Binding Large (50-150 pgs)', rate: 280, icon: '📚' },
+    { id: 'tape', name: 'Tape / Strip Document Binding', rate: 120, icon: '📑' }
+  ];
+
+  let curPreset = COPY_PRESETS[0];
+  let curCount = 1;
+  let curRate = curPreset.rate;
+
+  const m = modal(`
+    <div class="modal-header" style="border-bottom:1px solid var(--border); padding-bottom:12px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:26px;">🖨️</span>
+        <div>
+          <h3 class="modal-title" style="margin:0; font-size:18px;">Print, Copy & Services Calculator</h3>
+          <small class="muted">Instant billing for Photocopy, Printouts, Laminating, Typing & Binding (F2)</small>
+        </div>
+      </div>
+      <button class="modal-close-x" data-x>✕</button>
+    </div>
+
+    <!-- Mode Tabs -->
+    <div class="calc-nav-tabs" style="display:flex; gap:6px; margin:14px 0 16px; border-bottom:1px solid var(--border); padding-bottom:10px;">
+      <button type="button" class="btn btn-sm btn-calc-tab active" data-tab="copy" style="font-weight:700;">📄 Copy & Print</button>
+      <button type="button" class="btn btn-sm btn-calc-tab" data-tab="lam" style="font-weight:700;">🛡️ Lamination</button>
+      <button type="button" class="btn btn-sm btn-calc-tab" data-tab="typ" style="font-weight:700;">⌨️ Typing & Doc</button>
+      <button type="button" class="btn btn-sm btn-calc-tab" data-tab="bnd" style="font-weight:700;">🌀 Binding</button>
+    </div>
+
+    <div id="calcBody"></div>
+  `, true);
+
+  const renderCalcBody = () => {
+    let presets = COPY_PRESETS;
+    let unitLabel = 'Pages / Copies';
+    let stepBtns = [1, 5, 10, 25, 50, 100];
+
+    if (activeTab === 'lam') {
+      presets = LAM_PRESETS;
+      unitLabel = 'Lamination Count';
+      stepBtns = [1, 2, 5, 10, 20];
+    } else if (activeTab === 'typ') {
+      presets = TYP_PRESETS;
+      unitLabel = 'Pages / Documents';
+      stepBtns = [1, 2, 5, 10, 20];
+    } else if (activeTab === 'bnd') {
+      presets = BND_PRESETS;
+      unitLabel = 'Book / Binding Count';
+      stepBtns = [1, 2, 5, 10];
+    }
+
+    if (!presets.find(p => p.id === curPreset.id)) {
+      curPreset = presets[0];
+      curRate = curPreset.rate;
+    }
+
+    const subtotal = Math.round(curCount * curRate * 100) / 100;
+
+    m.querySelector('#calcBody').innerHTML = `
+      <div style="display:flex; flex-direction:column; gap:16px;">
+        <!-- Preset Cards Grid -->
+        <div>
+          <span style="display:block; font-size:12px; font-weight:700; margin-bottom:8px; text-transform:uppercase; letter-spacing:0.5px; color:var(--text-dim);">Select Service Type</span>
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(200px, 1fr)); gap:8px;">
+            ${presets.map(p => `
+              <button type="button" class="calc-preset-card ${p.id === curPreset.id ? 'active' : ''}" data-pid="${p.id}" style="
+                display:flex; align-items:center; justify-content:space-between; padding:10px 12px; border-radius:10px;
+                border:1.5px solid ${p.id === curPreset.id ? 'var(--brand)' : 'var(--border)'};
+                background:${p.id === curPreset.id ? 'rgba(99,102,241,0.08)' : 'var(--bg-card)'};
+                cursor:pointer; text-align:left; transition:all 0.15s;
+              ">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="font-size:18px;">${p.icon}</span>
+                  <div>
+                    <b style="display:block; font-size:12px; color:var(--text-main);">${esc(p.name)}</b>
+                    <small class="muted" style="font-size:10.5px;">Default: LKR ${p.rate.toFixed(2)}</small>
+                  </div>
+                </div>
+                ${p.id === curPreset.id ? '<span style="color:var(--brand); font-weight:800; font-size:16px;">✓</span>' : ''}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+
+        <!-- Quantity Steppers & Rate Inputs -->
+        <div style="display:grid; grid-template-columns:1.4fr 1fr; gap:14px; background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
+          <div>
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+              <span class="field-label" style="font-size:12px; font-weight:800;">${unitLabel}</span>
+              <small class="muted" style="font-size:11px;">Quick Add:</small>
+            </div>
+            <div style="display:flex; gap:8px; margin-bottom:8px;">
+              <input id="calcCountInput" type="number" min="1" step="1" value="${curCount}" style="width:100px; font-size:18px; font-weight:800; text-align:center;">
+              <div style="display:flex; gap:4px; flex-wrap:wrap; align-items:center;">
+                ${stepBtns.map(n => `<button type="button" class="btn btn-sm btn-ghost btn-step-pill" data-n="${n}" style="padding:4px 8px; font-size:11px; font-weight:700;">+${n}</button>`).join('')}
+                <button type="button" class="btn btn-sm btn-ghost btn-step-set" data-s="1" style="padding:4px 8px; font-size:11px; font-weight:700; color:var(--brand);">Reset</button>
+              </div>
+            </div>
+          </div>
+
+          <div>
+            <span class="field-label" style="display:block; font-size:12px; font-weight:800; margin-bottom:6px;">Unit Rate (LKR)</span>
+            <input id="calcRateInput" type="number" min="0" step="0.5" value="${curRate}" style="font-size:16px; font-weight:700;">
+            <small class="muted" style="font-size:10px; display:block; margin-top:4px;">You can override the unit price anytime.</small>
+          </div>
+        </div>
+
+        <!-- Summary & Add to Bill -->
+        <div style="display:flex; justify-content:space-between; align-items:center; background:linear-gradient(135deg, rgba(79,70,229,0.12) 0%, rgba(124,58,237,0.12) 100%); padding:14px 18px; border-radius:12px; border:1px solid rgba(99,102,241,0.3);">
+          <div>
+            <div style="font-size:11px; text-transform:uppercase; font-weight:800; color:var(--brand); letter-spacing:0.5px;">Calculated Bill Line</div>
+            <b style="font-size:14px; display:block; margin:2px 0;">${esc(curPreset.name)}</b>
+            <span style="font-size:12px; color:var(--text-dim);">${curCount} units × LKR ${Number(curRate).toFixed(2)}</span>
+          </div>
+          <div style="text-align:right;">
+            <div style="font-size:22px; font-weight:900; color:var(--text-main);">${fmt(subtotal)}</div>
+            <button type="button" class="btn btn-primary" id="btnCalcAddToBill" style="margin-top:6px; padding:10px 22px; font-weight:800; border-radius:10px; box-shadow:0 4px 12px rgba(99,102,241,0.35);">
+              ➕ Add to Bill
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
+
+    m.querySelectorAll('.calc-preset-card').forEach(btn => {
+      btn.onclick = () => {
+        const pid = btn.dataset.pid;
+        const found = presets.find(p => p.id === pid);
+        if (found) {
+          curPreset = found;
+          curRate = found.rate;
+          renderCalcBody();
+        }
+      };
+    });
+
+    m.querySelectorAll('.btn-step-pill').forEach(btn => {
+      btn.onclick = () => {
+        curCount += +btn.dataset.n;
+        renderCalcBody();
+      };
+    });
+
+    m.querySelectorAll('.btn-step-set').forEach(btn => {
+      btn.onclick = () => {
+        curCount = +btn.dataset.s;
+        renderCalcBody();
+      };
+    });
+
+    const cntInput = m.querySelector('#calcCountInput');
+    if (cntInput) {
+      cntInput.onchange = () => {
+        curCount = Math.max(1, parseInt(cntInput.value) || 1);
+        renderCalcBody();
+      };
+    }
+
+    const rtInput = m.querySelector('#calcRateInput');
+    if (rtInput) {
+      rtInput.onchange = () => {
+        curRate = Math.max(0, parseFloat(rtInput.value) || 0);
+        renderCalcBody();
+      };
+    }
+
+    const addBtn = m.querySelector('#btnCalcAddToBill');
+    if (addBtn) {
+      addBtn.onclick = () => {
+        onAdd({
+          name: curPreset.name,
+          price: curRate,
+          qty: curCount,
+          isService: true
+        });
+        m.close();
+        toast(`Added "${curPreset.name}" (${curCount} pcs) to bill!`);
+      };
+    }
+  };
+
+  m.querySelectorAll('.btn-calc-tab').forEach(btn => {
+    btn.onclick = () => {
+      m.querySelectorAll('.btn-calc-tab').forEach(b => {
+        b.classList.remove('active', 'btn-primary');
+        b.classList.add('btn-ghost');
+      });
+      btn.classList.add('active', 'btn-primary');
+      btn.classList.remove('btn-ghost');
+      activeTab = btn.dataset.tab;
+      renderCalcBody();
+    };
+  });
+
+  renderCalcBody();
+  m.querySelectorAll('[data-x]').forEach(el => el.onclick = m.close);
+}
+
+/* ==========================================================================
+   QUICK CUSTOM ITEM MODAL (OPEN PRICE ITEM - F3)
+   ========================================================================== */
+function showQuickCustomItemModal(onAdd) {
+  const m = modal(`
+    <div class="modal-header">
+      <div style="display:flex; align-items:center; gap:8px;">
+        <span style="font-size:22px;">⚡</span>
+        <div>
+          <h3 class="modal-title" style="margin:0;">Quick Custom Item / Open Price</h3>
+          <small class="muted">Add unique keytags, toys, or custom services directly to bill (F3)</small>
+        </div>
+      </div>
+      <button class="modal-close-x" data-x>✕</button>
+    </div>
+    <form id="quickCustomForm" class="auth-form" style="gap:14px; margin-top:10px;">
+      <!-- Quick Bookshop Presets -->
+      <div>
+        <span class="field-label" style="display:block; margin-bottom:6px;">1-Click Bookshop Presets</span>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+          <button type="button" class="quick-preset-pill" data-pname="Cartoon Rubber Keytag" data-pprice="150">🏷️ Rubber Keytag (150)</button>
+          <button type="button" class="quick-preset-pill" data-pname="Small Toy Car / Figurine" data-pprice="250">🧸 Small Toy (250)</button>
+          <button type="button" class="quick-preset-pill" data-pname="ID Card Lamination" data-pprice="80">🪪 ID Lamination (80)</button>
+          <button type="button" class="quick-preset-pill" data-pname="WhatsApp / Phone Print" data-pprice="25">📱 WhatsApp Print (25)</button>
+          <button type="button" class="quick-preset-pill" data-pname="Scan Document to USB / Email" data-pprice="50">💾 Scan to USB (50)</button>
+          <button type="button" class="quick-preset-pill" data-pname="Gift Wrapping Service" data-pprice="100">🎁 Gift Wrap (100)</button>
+        </div>
+      </div>
+
+      <label class="field-wrap">
+        <span class="field-label">Item / Service Description *</span>
+        <input id="qcName" placeholder="e.g. Spider-Man Keychain, Custom Toy, Laminate Poster" required autofocus autocomplete="off">
+      </label>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <label class="field-wrap">
+          <span class="field-label">Price (LKR) *</span>
+          <input id="qcPrice" type="number" min="0" step="0.5" placeholder="0.00" required>
+        </label>
+        <label class="field-wrap">
+          <span class="field-label">Quantity *</span>
+          <input id="qcQty" type="number" min="1" step="1" value="1" required>
+        </label>
+      </div>
+      <div class="modal-actions" style="margin-top:8px;">
+        <button type="button" class="btn btn-ghost" data-x>${t('cancel')}</button>
+        <button type="submit" class="btn btn-primary" style="padding:10px 24px; font-weight:800;">➕ Add to Bill</button>
+      </div>
+    </form>
+  `);
+  m.querySelectorAll('[data-x]').forEach(el => el.onclick = m.close);
+  m.querySelectorAll('.quick-preset-pill').forEach(btn => {
+    btn.onclick = () => {
+      m.querySelector('#qcName').value = btn.dataset.pname;
+      m.querySelector('#qcPrice').value = btn.dataset.pprice;
+      m.querySelector('#qcQty').focus();
+    };
+  });
+  m.querySelector('form').onsubmit = e => {
+    e.preventDefault();
+    const name = m.querySelector('#qcName').value.trim();
+    const price = Math.max(0, parseFloat(m.querySelector('#qcPrice').value) || 0);
+    const qty = Math.max(1, parseInt(m.querySelector('#qcQty').value) || 1);
+    if (!name) return toast('Please enter an item description', 1);
+    onAdd({
+      name,
+      price,
+      qty,
+      isService: true
+    });
+    m.close();
+    toast(`Added "${name}" to bill`);
+  };
+}
+
+/* ==========================================================================
+   BARCODE LABELS GENERATOR FOR STICKERS & LABELS
+   ========================================================================== */
+function showBarcodeLabelsModal() {
+  const products = items.filter(i => !i.IsService);
+  if (!products.length) return toast('No physical products available for barcode labels', 1);
+
+  let selectedId = products[0].Id;
+  let labelQty = 12;
+
+  const m = modal(`
+    <div class="modal-header" style="border-bottom:1px solid var(--border); padding-bottom:12px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:24px;">🏷️</span>
+        <div>
+          <h3 class="modal-title" style="margin:0;">Barcode Sticker Labels Generator</h3>
+          <small class="muted">Generate and print price barcode stickers for keytags, toys & stationery</small>
+        </div>
+      </div>
+      <button class="modal-close-x" data-x>✕</button>
+    </div>
+
+    <div style="display:grid; grid-template-columns: 2fr 1fr; gap:12px; margin:14px 0;">
+      <label class="field-wrap">
+        <span class="field-label">Select Product to Print Stickers</span>
+        <select id="lblProduct">
+          ${products.map(p => `<option value="${p.Id}" ${p.Id === selectedId ? 'selected' : ''}>${esc(p.Name)} (LKR ${p.Price.toFixed(2)}) · ${p.Barcode || 'No SKU'}</option>`).join('')}
+        </select>
+      </label>
+      <label class="field-wrap">
+        <span class="field-label">Number of Stickers</span>
+        <input id="lblQty" type="number" min="1" max="100" value="${labelQty}">
+      </label>
+    </div>
+
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+      <b style="font-size:13px;">Sticker Sheet Live Preview</b>
+      <button type="button" class="btn btn-primary btn-sm" id="btnPrintLabels" style="display:flex; align-items:center; gap:6px;">
+        <span>🖨️ Print Labels</span>
+      </button>
+    </div>
+
+    <div id="labelsPreviewWrap" class="labels-sheet-preview" style="max-height:360px; overflow-y:auto; background:var(--bg-card); border:1px solid var(--border); padding:16px; border-radius:12px; display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:10px;">
+    </div>
+  `, true);
+
+  const drawPreview = () => {
+    const it = products.find(p => p.Id === +m.querySelector('#lblProduct').value);
+    const count = Math.min(100, Math.max(1, parseInt(m.querySelector('#lblQty').value) || 12));
+    if (!it) return;
+
+    const bc = it.Barcode || ('SKU-' + String(it.Id).padStart(6, '0'));
+    const stickersHtml = Array.from({ length: count }).map(() => `
+      <div class="barcode-sticker" style="background:#ffffff; color:#000000; border:1px dashed #cccccc; padding:8px 6px; border-radius:6px; text-align:center; font-family:sans-serif; box-shadow:0 1px 3px rgba(0,0,0,0.06);">
+        <div style="font-size:8px; font-weight:800; text-transform:uppercase; letter-spacing:0.5px; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">AMECTAR BOOKSHOP</div>
+        <div style="font-size:9.5px; font-weight:700; margin:2px 0; overflow:hidden; white-space:nowrap; text-overflow:ellipsis;">${esc(it.Name)}</div>
+        <div style="background:#000; height:24px; margin:3px 4px; display:flex; align-items:stretch; justify-content:center; gap:1.5px; padding:0 3px;">
+          ${Array.from({ length: 22 }).map((_, idx) => `<span style="background:${(idx * 7 + bc.length) % 2 === 0 ? '#fff' : '#000'}; flex:${(idx % 3 === 0) ? '2' : '1'};"></span>`).join('')}
+        </div>
+        <div style="font-family:monospace; font-size:8px; letter-spacing:1px; font-weight:700;">*${esc(bc)}*</div>
+        <div style="font-size:11px; font-weight:800; color:#000000; margin-top:2px;">LKR ${it.Price.toFixed(2)}</div>
+      </div>
+    `).join('');
+
+    m.querySelector('#labelsPreviewWrap').innerHTML = stickersHtml;
+  };
+
+  m.querySelector('#lblProduct').onchange = drawPreview;
+  m.querySelector('#lblQty').oninput = drawPreview;
+  drawPreview();
+
+  m.querySelector('#btnPrintLabels').onclick = () => {
+    const previewContent = m.querySelector('#labelsPreviewWrap').innerHTML;
+    const printWin = window.open('', '_blank', 'width=800,height=600');
+    if (!printWin) return toast('Pop-up blocked. Please allow popups.', 1);
+    printWin.document.write(`
+      <html>
+        <head>
+          <title>Barcode Labels</title>
+          <style>
+            @page { size: auto; margin: 10mm; }
+            body { margin: 0; font-family: sans-serif; background: #fff; color: #000; }
+            .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 8mm; }
+            .barcode-sticker { border: 1px dashed #bbb; padding: 6px; border-radius: 4px; text-align: center; page-break-inside: avoid; }
+          </style>
+        </head>
+        <body onload="window.print(); window.close();">
+          <div class="grid">\${previewContent}</div>
+        </body>
+      </html>
+    `);
+    printWin.document.close();
+  };
+
+  m.querySelectorAll('[data-x]').forEach(el => el.onclick = m.close);
+}
+
+/* ==========================================================================
    VIEW 2: POS TERMINAL (RAPID KEYBOARD WORKFLOW & ENTERPRISE REGISTER)
    ========================================================================== */
 async function vPos() {
@@ -1370,13 +1796,20 @@ async function vPos() {
     <div class="pos-layout">
       <!-- Left: Fast Catalog & Search Section -->
       <section class="pos-catalog">
-        <!-- Search Bar with F1 Focus Hint -->
-        <div class="pos-search-bar">
-          <div class="pos-search-bar-wrap">
+        <!-- Search Bar with F1 Focus Hint and Print / Custom Shortcuts -->
+        <div class="pos-search-bar" style="display:flex; gap:10px; align-items:center;">
+          <div class="pos-search-bar-wrap" style="flex:1;">
             <svg class="pos-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input id="q" placeholder="${t('searchPos')}" autofocus autocomplete="off">
             <span class="pos-shortcut-hint-pill">F1</span>
           </div>
+
+          <button type="button" class="btn btn-primary" id="btnPosCalc" title="Photocopy, Printing, Lamination & Typing Calculator (F2)" style="display:flex; align-items:center; gap:6px; font-weight:800; white-space:nowrap; padding:10px 16px; border-radius:12px; background:linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border:none; box-shadow:0 4px 12px rgba(99,102,241,0.35);">
+            <span>🖨️ Copy / Print (F2)</span>
+          </button>
+          <button type="button" class="btn btn-secondary" id="btnPosCustom" title="Quick Custom Item (F3)" style="display:flex; align-items:center; gap:6px; font-weight:700; white-space:nowrap; padding:10px 14px; border-radius:12px;">
+            <span>⚡ Custom (F3)</span>
+          </button>
         </div>
 
         <!-- Category Chips -->
@@ -1510,15 +1943,17 @@ async function vPos() {
     const cats = ['All', ...new Set(items.map(i => i.Category).filter(Boolean))];
     $('#cats').innerHTML = cats.map(c => `
       <button class="cat-chip ${c === cat ? 'on' : ''}" data-c="${esc(c)}">
-        ${c === 'All' ? t('all') : esc(c)}
+        <span>${c === 'All' ? '🌟' : catIcon(c)}</span> ${c === 'All' ? t('all') : esc(c)}
       </button>
     `).join('');
 
     const visible = getVisibleItems();
     if (selectedTileIndex >= visible.length) selectedTileIndex = Math.max(0, visible.length - 1);
 
-    $('#grid').innerHTML = visible.map((i, idx) => `
-      <div class="item-tile ${i.Stock <= 0 ? 'out-of-stock' : ''} ${isNavigatingGrid && idx === selectedTileIndex ? 'active-keyboard-tile' : ''}" 
+    $('#grid').innerHTML = visible.map((i, idx) => {
+      const isServ = !!(i.IsService || i.ItemType === 'Service');
+      return `
+      <div class="item-tile ${!isServ && i.Stock <= 0 ? 'out-of-stock' : ''} ${isNavigatingGrid && idx === selectedTileIndex ? 'active-keyboard-tile' : ''}" 
            style="--cat-hue:${hue(i.Category)}" 
            data-id="${i.Id}" 
            data-idx="${idx}">
@@ -1528,27 +1963,31 @@ async function vPos() {
           ${i.ImageUrl ? `
             <img src="${esc(i.ImageUrl)}" class="tile-food-img" alt="${esc(i.Name)}" loading="lazy" onerror="this.style.display='none'; this.nextElementSibling.style.display='flex';">
             <div class="tile-img-fallback hide" style="background:hsl(${hue(i.Category)}, 70%, 93%); color:hsl(${hue(i.Category)}, 80%, 40%);">
-              <span>${esc(i.Name.slice(0, 2).toUpperCase())}</span>
+              <span style="font-size:26px;">${catIcon(i.Category)}</span>
             </div>
           ` : `
             <div class="tile-img-fallback" style="background:hsl(${hue(i.Category)}, 70%, 93%); color:hsl(${hue(i.Category)}, 80%, 40%);">
-              <span>${esc(i.Name.slice(0, 2).toUpperCase())}</span>
+              <span style="font-size:26px;">${catIcon(i.Category)}</span>
             </div>
           `}
         </div>
 
         <div>
           <div class="tile-name">${esc(i.Name)}</div>
-          <div class="tile-cat-badge">${esc(i.Category || 'General')}</div>
+          <div class="tile-cat-badge">${catIcon(i.Category)} ${esc(i.Category || 'General')}</div>
         </div>
         <div class="tile-bottom">
           <span class="tile-price">${fmt(i.Price)}</span>
-          <span class="tile-stock ${i.Stock <= 5 ? 'low' : ''}">${t('stock')}: ${i.Stock}</span>
+          ${isServ 
+            ? `<span class="tile-stock" style="background:rgba(99,102,241,0.12); color:#4f46e5; font-weight:800; border:1px solid rgba(99,102,241,0.25);">⚙️ Service</span>`
+            : `<span class="tile-stock ${i.Stock <= 5 ? 'low' : ''}">${t('stock')}: ${i.Stock}</span>`
+          }
         </div>
       </div>
-    `).join('') || `
+    `;
+    }).join('') || `
       <div class="muted" style="grid-column:1/-1; text-align:center; padding:40px;">
-        No products found matching your search.
+        No products or services found matching your search.
       </div>
     `;
   };
@@ -1589,7 +2028,7 @@ async function vPos() {
         <div class="cart-line-top">
           <div>
             <div class="cart-line-name">${esc(l.name)}</div>
-            <div class="cart-line-meta">@ LKR ${l.price.toFixed(2)} · In Stock: ${l.stock}</div>
+            <div class="cart-line-meta">@ LKR ${l.price.toFixed(2)} ${l.isService ? '· <span style="color:#6366f1; font-weight:700;">⚙️ Service</span>' : `· In Stock: ${l.stock}`}</div>
           </div>
           <button type="button" class="cart-line-del" data-rm="${i}" title="Remove item">✕</button>
         </div>
@@ -1597,7 +2036,7 @@ async function vPos() {
         <div class="cart-line-controls">
           <div class="qty-stepper">
             <button type="button" class="qty-step-btn" data-step="-1" data-i="${i}">−</button>
-            <input type="number" min="1" max="${l.stock}" value="${l.qty}" class="qty-input-box" data-i="${i}" data-f="qty">
+            <input type="number" min="1" max="${l.isService ? 99999 : l.stock}" value="${l.qty}" class="qty-input-box" data-i="${i}" data-f="qty">
             <button type="button" class="qty-step-btn" data-step="1" data-i="${i}">+</button>
           </div>
 
@@ -1627,16 +2066,42 @@ async function vPos() {
     }
   };
 
-  const add = id => {
+  const add = (id, customLine = null) => {
+    if (customLine) {
+      const servItem = items.find(i => i.IsService || i.ItemType === 'Service') || items[0] || { Id: 1 };
+      cart.push({
+        id: servItem.Id,
+        name: customLine.name,
+        price: +customLine.price,
+        qty: customLine.qty || 1,
+        disc: 0,
+        stock: 99999,
+        isService: true,
+        customPrice: +customLine.price,
+        customName: customLine.name
+      });
+      drawCart(servItem.Id);
+      return;
+    }
+
     const it = items.find(i => i.Id === id);
     if (!it) return;
+    const isService = !!(it.IsService || it.ItemType === 'Service');
     const l = cart.find(c => c.id === id);
-    if ((l ? l.qty : 0) + 1 > it.Stock) return toast(t('notEnough'), 1);
+    if (!isService && (l ? l.qty : 0) + 1 > it.Stock) return toast(t('notEnough'), 1);
 
     if (l) {
       l.qty++;
     } else {
-      cart.push({ id, name: it.Name, price: +it.Price, qty: 1, disc: 0, stock: it.Stock });
+      cart.push({
+        id,
+        name: it.Name,
+        price: +it.Price,
+        qty: 1,
+        disc: 0,
+        stock: it.Stock,
+        isService: isService
+      });
     }
     drawCart(id);
   };
@@ -1710,7 +2175,13 @@ async function vPos() {
 
     try {
       const r = await call('sales:checkout', {
-        lines: cart.map(l => ({ id: l.id, qty: l.qty, disc: l.disc })),
+        lines: cart.map(l => ({
+          id: l.id,
+          qty: l.qty,
+          disc: l.disc,
+          customPrice: l.customPrice,
+          customName: l.customName
+        })),
         paid: isNaN(paid) ? tot : paid,
         paymentMethod: posPaymentMethod,
         billDiscount: disc
@@ -1727,6 +2198,9 @@ async function vPos() {
     selectedTileIndex = 0;
     drawGrid();
   };
+
+  $('#btnPosCalc').onclick = () => showPrintServiceCalculator(customLine => add(null, customLine));
+  $('#btnPosCustom').onclick = () => showQuickCustomItemModal(customLine => add(null, customLine));
 
   $('#cats').onclick = e => {
     const b = e.target.closest('button');
@@ -1753,7 +2227,7 @@ async function vPos() {
         const nextQty = l.qty + step;
         if (nextQty <= 0) {
           cart.splice(idx, 1);
-        } else if (nextQty <= l.stock) {
+        } else if (l.isService || nextQty <= l.stock) {
           l.qty = nextQty;
         } else {
           toast(t('notEnough'), 1);
@@ -1776,7 +2250,7 @@ async function vPos() {
     const l = cart[i];
     if (!l) return;
     const v = Math.max(f === 'qty' ? 1 : 0, parseFloat(e.target.value) || 0);
-    if (f === 'qty') l.qty = Math.min(Math.floor(v), l.stock);
+    if (f === 'qty') l.qty = l.isService ? Math.floor(v) : Math.min(Math.floor(v), l.stock);
     else l.disc = Math.min(v, 100);
     drawCart();
   };
@@ -1812,6 +2286,20 @@ async function vPos() {
         isNavigatingGrid = false;
         updateTileFocus();
       }
+      return;
+    }
+
+    // F2: Copy & Print Calculator Modal
+    if (e.key === 'F2') {
+      e.preventDefault();
+      showPrintServiceCalculator(customLine => add(null, customLine));
+      return;
+    }
+
+    // F3: Quick Custom Item Modal
+    if (e.key === 'F3') {
+      e.preventDefault();
+      showQuickCustomItemModal(customLine => add(null, customLine));
       return;
     }
 
@@ -2124,14 +2612,15 @@ async function vReceiptSettings() {
     createdAt: new Date().toISOString(),
     cashier: me?.fullName || 'Cashier User',
     lines: [
-      { name: 'Chicken Kottu', qty: 2, price: 700, disc: 0, total: 1400 },
-      { name: 'Coca-Cola 400ml', qty: 1, price: 180, disc: 0, total: 180 },
-      { name: 'Fish Cutlet', qty: 2, price: 90, disc: 0, total: 180 }
+      { name: 'Atlas CR Book 120 Pgs', qty: 2, price: 260, disc: 0, total: 520 },
+      { name: 'Photocopy A4 B/W (Double Sided)', qty: 30, price: 15, disc: 0, total: 450 },
+      { name: 'Atlas Chooty Pen (Blue)', qty: 3, price: 40, disc: 0, total: 120 },
+      { name: 'Cartoon Anime Rubber Keytag', qty: 1, price: 150, disc: 0, total: 150 }
     ],
-    subtotal: 1760,
-    discount: 60,
-    total: 1700,
-    paid: 2000,
+    subtotal: 1240,
+    discount: 40,
+    total: 1200,
+    paid: 1500,
     balance: 300,
     paymentMethod: 'Cash'
   };
@@ -2177,7 +2666,7 @@ async function vReceiptSettings() {
 }
 
 /* ==========================================================================
-   VIEW 3: INVENTORY (ITEMS)
+   VIEW 3: INVENTORY (ITEMS - STATIONERY, BOOKS, TOYS & SERVICES)
    ========================================================================== */
 async function vItems() {
   items = await call('items:list');
@@ -2185,10 +2674,12 @@ async function vItems() {
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
       <div>
         <h2 style="margin:0; font-size:22px; font-weight:800;">${t('items')}</h2>
-        <span class="muted small">${items.length} products listed</span>
+        <span class="muted small">${items.length} products & services listed</span>
       </div>
-      <div style="display:flex; gap:10px;">
-        <input id="s" placeholder="${t('searchItems')}" style="width:260px;">
+      <div style="display:flex; gap:10px; align-items:center;">
+        <input id="s" placeholder="${t('searchItems')}" style="width:240px;">
+        <button class="btn btn-secondary" id="btnSeedBookshop" title="Load or reset standard stationery, books, toys & service items">📚 Load Catalog</button>
+        <button class="btn btn-secondary" id="btnBarcodeLabels" title="Print barcode stickers for toys, keytags & books">🏷️ Barcode Labels</button>
         <button class="btn btn-primary" id="add">${t('addItem')}</button>
       </div>
     </div>
@@ -2211,31 +2702,41 @@ async function vItems() {
           </tr>
         </thead>
         <tbody>
-          ${rows.map(i => `
+          ${rows.map(i => {
+            const isServ = !!(i.IsService || i.ItemType === 'Service');
+            return `
             <tr>
               <td>
                 <div style="display:flex; align-items:center; gap:12px;">
-                  <img src="${esc(i.ImageUrl || 'assets/food/chicken-fried-rice.jpg')}" 
-                       class="table-food-thumb" 
-                       alt="${esc(i.Name)}" 
-                       loading="lazy" 
-                       onerror="this.src='assets/food/chicken-fried-rice.jpg'">
+                  <div class="table-cat-icon-box" style="width:36px; height:36px; border-radius:8px; display:flex; align-items:center; justify-content:center; background:hsl(${hue(i.Category)}, 70%, 93%); font-size:18px;">
+                    ${catIcon(i.Category)}
+                  </div>
                   <div>
                     <b>${esc(i.Name)}</b>
-                    ${i.ImageUrl ? `<small style="display:block; color:#10b981; font-size:10px; font-weight:700;">✓ Offline Local Photo</small>` : ''}
+                    ${isServ ? `<small style="display:block; color:#6366f1; font-size:10px; font-weight:800;">⚙️ Print / Doc Service</small>` : ''}
                   </div>
                 </div>
               </td>
-              <td><span class="pill info">${esc(i.Category)}</span></td>
+              <td>
+                <span class="pill info" style="display:inline-flex; align-items:center; gap:4px;">
+                  <span>${catIcon(i.Category)}</span> ${esc(i.Category)}
+                </span>
+              </td>
               <td><b>${fmt(i.Price)}</b></td>
-              <td><span class="pill ${i.Stock <= 5 ? 'no' : 'ok'}">${i.Stock}</span></td>
+              <td>
+                ${isServ 
+                  ? `<span class="pill" style="background:rgba(99,102,241,0.15); color:#4f46e5; font-weight:800; border:1px solid rgba(99,102,241,0.25);">⚙️ Service</span>`
+                  : `<span class="pill ${i.Stock <= 5 ? 'no' : 'ok'}">${i.Stock}</span>`
+                }
+              </td>
               <td><code class="muted">${esc(i.Barcode || '—')}</code></td>
               <td style="text-align:right;">
                 <button class="btn btn-sm btn-ghost" data-a="e" data-id="${i.Id}">${t('edit')}</button>
                 <button class="btn btn-sm btn-danger" data-a="d" data-id="${i.Id}">${t('del')}</button>
               </td>
             </tr>
-          `).join('') || `<tr><td colspan="6" class="muted" style="text-align:center; padding:30px;">${t('noData')}</td></tr>`}
+          `;
+          }).join('') || `<tr><td colspan="6" class="muted" style="text-align:center; padding:30px;">${t('noData')}</td></tr>`}
         </tbody>
       </table>
     `;
@@ -2244,6 +2745,19 @@ async function vItems() {
   draw();
   $('#s').oninput = draw;
   $('#add').onclick = () => itemForm();
+  $('#btnBarcodeLabels').onclick = () => showBarcodeLabelsModal();
+  $('#btnSeedBookshop').onclick = async () => {
+    if (confirm('Load standard Bookshop, Stationery, Toys & Print/Copy Service presets into inventory?')) {
+      try {
+        await call('items:seedBookshop');
+        toast('Default bookshop catalog loaded successfully!');
+        vItems();
+      } catch (err) {
+        toast(err.message, 1);
+      }
+    }
+  };
+
   $('#tbl').onclick = async e => {
     const b = e.target.closest('button');
     if (!b) return;
@@ -2262,8 +2776,12 @@ async function vItems() {
 }
 
 const itemForm = (it = {}) => {
-  const cats = [...new Set(items.map(i => i.Category).filter(Boolean))];
-  let currentImageUrl = it.ImageUrl || '';
+  const BOOKSHOP_PRESET_CATS = [
+    'Stationery', 'Books', 'Toys & Keytags', 'Photocopy & Print',
+    'Lamination & Binding', 'Typing & Services', 'General'
+  ];
+  const cats = [...new Set([...BOOKSHOP_PRESET_CATS, ...items.map(i => i.Category).filter(Boolean)])];
+  let isService = !!(it.IsService || it.ItemType === 'Service');
 
   const m = modal(`
     <div class="modal-header">
@@ -2272,26 +2790,39 @@ const itemForm = (it = {}) => {
     </div>
 
     <form id="itemFormModal" class="auth-form" style="gap:12px;">
+      <!-- Product vs Service Toggle -->
+      <div style="background:var(--bg-input); padding:10px 14px; border-radius:12px; border:1px solid var(--border);">
+        <span class="field-label" style="display:block; margin-bottom:8px; font-weight:800;">${t('itemType')} *</span>
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
+          <button type="button" class="btn btn-sm ${!isService ? 'btn-primary' : 'btn-ghost'} btn-type-toggle" data-type="product" style="font-weight:700;">
+            📦 Physical Product (Track Stock)
+          </button>
+          <button type="button" class="btn btn-sm ${isService ? 'btn-primary' : 'btn-ghost'} btn-type-toggle" data-type="service" style="font-weight:700;">
+            ⚙️ Service (No Stock Limit)
+          </button>
+        </div>
+      </div>
+
       <label class="field-wrap">
         <span class="field-label">${t('name')} *</span>
-        <input id="formItemName" value="${esc(it.Name || '')}" placeholder="e.g. Paratha, 100ml Sting drink, Chicken Kottu" required autofocus autocomplete="off">
-        <small class="muted" style="font-size:11px;">Typing will automatically detect matching food & beverage photos</small>
+        <input id="formItemName" value="${esc(it.Name || '')}" placeholder="e.g. Atlas CR Book 120 Pgs, A4 Double Side Copy, Anime Keytag" required autofocus autocomplete="off">
+        <small class="muted" style="font-size:11px;">Typing will automatically suggest category, default price & SKU from bookshop catalog</small>
       </label>
 
-      <!-- Auto-Matched Image Live Preview Box -->
-      <div id="imagePreviewContainer" class="auto-match-preview-card ${currentImageUrl ? '' : 'hide'}">
-        <img id="formPreviewImg" src="${esc(currentImageUrl || 'assets/food/chicken-fried-rice.jpg')}" class="auto-match-img" onerror="this.src='assets/food/chicken-fried-rice.jpg'">
+      <!-- Auto-Matched Bookshop Preview Box -->
+      <div id="imagePreviewContainer" class="auto-match-preview-card hide" style="background:var(--bg-input); border:1px solid var(--border); padding:10px 14px; border-radius:12px; display:flex; align-items:center; gap:12px;">
+        <span id="previewCatIcon" style="font-size:28px;">📚</span>
         <div style="flex:1;">
-          <span class="auto-match-badge" id="previewBadgeText">✓ Offline Local Photo</span>
-          <b id="previewFoodTitle" style="display:block; font-size:13px; margin:2px 0;">${esc(it.Name || 'Food Item')}</b>
-          <small class="muted" id="previewFoodSub" style="font-size:11px;">Ready to display on POS terminal cards (Offline)</small>
+          <span class="auto-match-badge" id="previewBadgeText" style="font-size:10px; font-weight:800; color:var(--brand); text-transform:uppercase;">✓ Auto-Matched Preset</span>
+          <b id="previewFoodTitle" style="display:block; font-size:13px; margin:2px 0;">Product</b>
+          <small class="muted" id="previewFoodSub" style="font-size:11px;">Bookshop & Print Catalog Match</small>
         </div>
       </div>
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
         <label class="field-wrap">
           <span class="field-label">${t('category')} *</span>
-          <input id="formItemCategory" list="catDatalist" value="${esc(it.Category || '')}" placeholder="e.g. Beverages, Fried Rice" required>
+          <input id="formItemCategory" list="catDatalist" value="${esc(it.Category || 'Stationery')}" placeholder="Select or type category" required>
           <datalist id="catDatalist">
             ${cats.map(c => `<option value="${esc(c)}">`).join('')}
           </datalist>
@@ -2299,27 +2830,22 @@ const itemForm = (it = {}) => {
 
         <label class="field-wrap">
           <span class="field-label">${t('priceLkr')} *</span>
-          <input id="formItemPrice" type="number" min="0" step="0.01" value="${it.Price != null ? it.Price : ''}" placeholder="0.00" required>
+          <input id="formItemPrice" type="number" min="0" step="0.5" value="${it.Price != null ? it.Price : ''}" placeholder="0.00" required>
+        </label>
+
+        <label class="field-wrap" id="stockFieldWrap" style="${isService ? 'opacity:0.5; pointer-events:none;' : ''}">
+          <span class="field-label">${t('stockQty')} ${isService ? '(Service: Unlimited)' : '*'}</span>
+          <input id="formItemStock" type="number" min="0" step="1" value="${it.Stock != null ? it.Stock : 50}" placeholder="0" ${isService ? 'disabled' : 'required'}>
         </label>
 
         <label class="field-wrap">
-          <span class="field-label">${t('stockQty')} *</span>
-          <input id="formItemStock" type="number" min="0" step="1" value="${it.Stock != null ? it.Stock : 50}" placeholder="0" required>
-        </label>
-
-        <label class="field-wrap">
-          <span class="field-label">${t('barcode')}</span>
-          <input id="formItemBarcode" value="${esc(it.Barcode || '')}" placeholder="Optional barcode / SKU">
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="field-label">${t('barcode')}</span>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnGenSku" style="padding:0 6px; font-size:10px; color:var(--brand); font-weight:800;">⚡ Auto SKU</button>
+          </div>
+          <input id="formItemBarcode" value="${esc(it.Barcode || '')}" placeholder="ISBN / Barcode / SKU">
         </label>
       </div>
-
-      <!-- Advanced / Custom Image URL Field -->
-      <details style="font-size:12px; margin-top:2px;">
-        <summary style="cursor:pointer; color:var(--brand); font-weight:700;">Custom Image URL (Optional override)</summary>
-        <div style="margin-top:8px;">
-          <input id="formItemImageUrl" value="${esc(currentImageUrl)}" placeholder="Paste custom web image URL (https://…)" style="font-size:12px;">
-        </div>
-      </details>
 
       <div class="modal-actions" style="margin-top:10px;">
         <button type="button" class="btn btn-ghost" data-x>${t('cancel')}</button>
@@ -2330,60 +2856,72 @@ const itemForm = (it = {}) => {
 
   const nameInput = m.querySelector('#formItemName');
   const catInput = m.querySelector('#formItemCategory');
-  const imgInput = m.querySelector('#formItemImageUrl');
+  const priceInput = m.querySelector('#formItemPrice');
+  const stockInput = m.querySelector('#formItemStock');
+  const barcodeInput = m.querySelector('#formItemBarcode');
+  const stockWrap = m.querySelector('#stockFieldWrap');
   const previewBox = m.querySelector('#imagePreviewContainer');
-  const previewImg = m.querySelector('#formPreviewImg');
+  const previewIcon = m.querySelector('#previewCatIcon');
   const previewTitle = m.querySelector('#previewFoodTitle');
-  const previewBadge = m.querySelector('#previewBadgeText');
+
+  // Toggle Product vs Service
+  m.querySelectorAll('.btn-type-toggle').forEach(btn => {
+    btn.onclick = () => {
+      m.querySelectorAll('.btn-type-toggle').forEach(b => {
+        b.classList.remove('btn-primary');
+        b.classList.add('btn-ghost');
+      });
+      btn.classList.add('btn-primary');
+      btn.classList.remove('btn-ghost');
+      isService = btn.dataset.type === 'service';
+      if (isService) {
+        stockInput.disabled = true;
+        stockInput.value = '0';
+        stockWrap.style.opacity = '0.5';
+        stockWrap.style.pointerEvents = 'none';
+      } else {
+        stockInput.disabled = false;
+        if (+stockInput.value === 0) stockInput.value = '50';
+        stockWrap.style.opacity = '1';
+        stockWrap.style.pointerEvents = 'auto';
+      }
+    };
+  });
+
+  // Auto SKU generator for barcode-less items (keytags, toys, loose pens)
+  m.querySelector('#btnGenSku').onclick = () => {
+    const randomSku = 'BKP-' + Math.floor(100000 + Math.random() * 900000);
+    barcodeInput.value = randomSku;
+    toast(`Generated SKU: ${randomSku}`);
+  };
 
   const onNameChange = () => {
     const val = nameInput.value.trim();
     if (!val) {
-      if (!imgInput.value.trim()) previewBox.classList.add('hide');
+      previewBox.classList.add('hide');
       return;
     }
 
-    if (typeof matchFoodCatalogItem === 'function') {
-      const match = matchFoodCatalogItem(val);
+    if (typeof matchBookshopCatalogItem === 'function') {
+      const match = matchBookshopCatalogItem(val);
       if (match) {
-        currentImageUrl = match.imageUrl;
-        imgInput.value = match.imageUrl;
-        previewImg.src = match.imageUrl;
+        previewIcon.textContent = catIcon(match.category);
         previewTitle.textContent = match.name;
-        previewBadge.textContent = '✓ Auto-Matched Photo';
         previewBox.classList.remove('hide');
-        if (!catInput.value.trim()) {
-          catInput.value = match.category;
+        if (!catInput.value || catInput.value === 'Stationery') catInput.value = match.category;
+        if (!priceInput.value) priceInput.value = match.defaultPrice;
+        if (!barcodeInput.value && match.barcode) barcodeInput.value = match.barcode;
+        if (match.isService && !isService) {
+          const servBtn = m.querySelector('.btn-type-toggle[data-type="service"]');
+          if (servBtn) servBtn.click();
         }
         return;
       }
     }
-
-    if (imgInput.value.trim()) {
-      previewBox.classList.remove('hide');
-      previewImg.src = imgInput.value.trim();
-      previewTitle.textContent = val;
-      previewBadge.textContent = 'Custom Photo';
-    } else {
-      previewBox.classList.add('hide');
-    }
+    previewBox.classList.add('hide');
   };
 
   nameInput.oninput = onNameChange;
-
-  imgInput.oninput = () => {
-    const url = imgInput.value.trim();
-    if (url) {
-      currentImageUrl = url;
-      previewImg.src = url;
-      previewTitle.textContent = nameInput.value.trim() || 'Custom Food';
-      previewBadge.textContent = 'Custom Photo URL';
-      previewBox.classList.remove('hide');
-    } else {
-      currentImageUrl = '';
-      previewBox.classList.add('hide');
-    }
-  };
 
   m.querySelectorAll('[data-x]').forEach(el => el.onclick = m.close);
 
@@ -2391,10 +2929,9 @@ const itemForm = (it = {}) => {
     e.preventDefault();
     const name = nameInput.value.trim();
     const category = catInput.value.trim();
-    const price = parseFloat(m.querySelector('#formItemPrice').value) || 0;
-    const stock = parseInt(m.querySelector('#formItemStock').value) || 0;
-    const barcode = m.querySelector('#formItemBarcode').value.trim();
-    const imageUrl = imgInput.value.trim() || currentImageUrl || null;
+    const price = parseFloat(priceInput.value) || 0;
+    const stock = isService ? 0 : (parseInt(stockInput.value) || 0);
+    const barcode = barcodeInput.value.trim();
 
     try {
       await call('items:save', {
@@ -2404,7 +2941,8 @@ const itemForm = (it = {}) => {
         price,
         stock,
         barcode,
-        imageUrl
+        isService: isService,
+        itemType: isService ? 'Service' : 'Product'
       });
       m.close();
       toast(t('saved'));
@@ -2426,7 +2964,7 @@ async function vGrn() {
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
       <div>
         <h2 style="margin:0; font-size:22px; font-weight:800;">${t('grn')}</h2>
-        <span class="muted small">Beverages Batch Tracking & Goods Inward Receipts</span>
+        <span class="muted small">Stationery, Books & Goods Inward Receipts</span>
       </div>
       <div style="display:flex; gap:10px;">
         <input id="grnSearch" placeholder="Search supplier or GRN #…" style="width:240px;">
@@ -2583,7 +3121,7 @@ async function showNewGrnModal() {
     <div class="modal-header">
       <div>
         <h3 class="modal-title">${t('newGrn')}</h3>
-        <small class="muted">Receive stock for Beverages, Groceries, Bakery & all inventory categories</small>
+        <small class="muted">Receive stock for Stationery, Books, Toys & inventory categories</small>
       </div>
       <button class="modal-close-x" data-x>✕</button>
     </div>
@@ -2596,7 +3134,7 @@ async function showNewGrnModal() {
         </label>
         <label class="field-wrap">
           <span class="field-label">${t('supplier')}</span>
-          <input name="supplier" placeholder="e.g. Ceylon Cold Stores / Elephant House / Distributor" required>
+          <input name="supplier" placeholder="e.g. Atlas Axillia / Richard Trading / Sarasavi Publishers" required>
         </label>
         <label class="field-wrap">
           <span class="field-label">${t('invoiceRef')}</span>
@@ -3495,6 +4033,261 @@ async function vSubs() {
       vSubs();
     }
   );
+}
+
+/* ==========================================================================
+   VIEW 9: USER GUIDE & HELP (CASHIER & STORE OPERATIONS)
+   ========================================================================== */
+async function vHelp() {
+  const isSi = lang === 'si';
+
+  $('#view').innerHTML = `
+    <div style="max-width:1100px; margin:0 auto; padding-bottom:50px;">
+      <!-- Header Banner with In-Page Language Toggle Switcher -->
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:16px; margin-bottom:24px; background:linear-gradient(135deg, rgba(79,70,229,0.1) 0%, rgba(124,58,237,0.12) 100%); padding:22px 26px; border-radius:16px; border:1px solid rgba(99,102,241,0.25);">
+        <div>
+          <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:32px;">📖</span>
+            <div>
+              <h2 style="margin:0; font-size:24px; font-weight:900; color:var(--text-main);">
+                ${isSi ? 'පොත්හල් සහ සේවා POS පද්ධති මාර්ගෝපදේශය' : 'BookShop & Services POS User Guide'}
+              </h2>
+              <span class="muted" style="display:block; margin-top:4px; font-size:13px;">
+                ${isSi ? 'අයකැමි කාර්යයන්, ෆොටෝකොපි/මුද්‍රණ ගණකය, බාර්කෝඩ් සහ තොග කළමනාකරණය' : 'Complete operational guide for cashier billing, print/copy services & stock management'}
+              </span>
+            </div>
+          </div>
+        </div>
+
+        <!-- In-Page Language Switcher -->
+        <div style="display:flex; align-items:center; gap:8px; background:var(--bg-card); padding:5px 8px; border-radius:12px; border:1.5px solid var(--border); box-shadow:0 2px 8px rgba(0,0,0,0.06);">
+          <span style="font-size:12px; font-weight:800; color:var(--text-dim); margin-left:6px;">${isSi ? 'භාෂාව මාරු කරන්න:' : 'Language:'}</span>
+          <button type="button" data-lang="en" class="btn btn-sm ${!isSi ? 'btn-primary' : 'btn-ghost'}" style="font-weight:800; padding:6px 14px; border-radius:8px; cursor:pointer;">
+            🇬🇧 English
+          </button>
+          <button type="button" data-lang="si" class="btn btn-sm ${isSi ? 'btn-primary' : 'btn-ghost'}" style="font-weight:800; padding:6px 14px; border-radius:8px; cursor:pointer;">
+            🇱🇰 සිංහල
+          </button>
+        </div>
+      </div>
+
+      <!-- Main Guide Cards Grid -->
+      <div style="display:flex; flex-direction:column; gap:22px;">
+
+        <!-- 1. Keyboard Shortcuts Cheat Sheet -->
+        <div class="table-card" style="padding:22px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:16px;">
+            <span style="font-size:22px;">⚡</span>
+            <div>
+              <h3 style="margin:0; font-size:18px; font-weight:800;">
+                ${isSi ? 'වේගවත් අයකැමි කෙටිමං යතුරු (Keyboard Shortcuts)' : 'Fast Cashier Keyboard Shortcuts'}
+              </h3>
+              <small class="muted">${isSi ? 'මවුසය රහිතව සම්පූර්ණ විකුණුම් ක්‍රියාවලිය යතුරුපුවරුවෙන්ම සිදුකිරීම සඳහා' : 'Run the entire cashier workflow hands-on without touching the mouse'}</small>
+            </div>
+          </div>
+
+          <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:12px;">
+            <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'සෙවීම සහ බාර්කෝඩ්' : 'Search / Barcode'}</b>
+                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">F1</span>
+              </div>
+              <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
+                ${isSi ? 'සෙවුම් තීරුව සක්‍රිය කරයි. බාර්කෝඩ් ස්කෑනරයෙන් කෙලින්ම ස්කෑන් කර බිලට ඇතුළත් කළ හැක.' : 'Focuses search bar. Scan ISBN or barcode directly to add items.'}
+              </small>
+            </div>
+
+            <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'ෆොටෝකොපි / මුද්‍රණ ගණකය' : 'Copy / Print Calc'}</b>
+                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">F2</span>
+              </div>
+              <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
+                ${isSi ? 'ෆොටෝකොපි, පරිගණක මුද්‍රණ, ලැමිනේට්, ටයිපින් සහ බයින්ඩින් ක්ෂණික ගණකය විවෘත වේ.' : 'Opens speed calculator for Photocopy, Print, Lamination, Typing & Binding.'}
+              </small>
+            </div>
+
+            <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'ක්ෂණික භාණ්ඩයක්' : 'Quick Custom Item'}</b>
+                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">F3</span>
+              </div>
+              <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
+                ${isSi ? 'පද්ධතියේ ලියාපදිංචි නොවූ සෙල්ලම් බඩු, කීටැග් හෝ සේවා ක්ෂණික මිලකට බිල් කරයි.' : 'Instantly bill uncatalogued toys, novelty keytags or custom repair jobs.'}
+              </small>
+            </div>
+
+            <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'රිසිට්පත් මුද්‍රණය' : 'Auto Print Toggle'}</b>
+                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">F8</span>
+              </div>
+              <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
+                ${isSi ? 'බිල අවසන් වූ විට ස්වයංක්‍රීයව රිසිට්පත මුද්‍රණය සක්‍රිය (ON) හෝ අක්‍රිය (OFF) කරයි.' : 'Toggle thermal receipt auto-printing ON or OFF directly from register.'}
+              </small>
+            </div>
+
+            <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'භාණ්ඩ තෝරාගැනීම' : 'Catalog Navigation'}</b>
+                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">↑ ↓ ← →</span>
+              </div>
+              <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
+                ${isSi ? 'ඊතල යතුරු මගින් භාණ්ඩ කාඩ්පත් තෝරා Enter ඔබා බිලට ඇතුළත් කරන්න.' : 'Navigate product tiles with arrow keys and press Enter to add to cart.'}
+              </small>
+            </div>
+
+            <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'වට්ටම සහ ගෙවීම' : 'Discount & Checkout'}</b>
+                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">Shift ➔ Enter</span>
+              </div>
+              <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
+                ${isSi ? 'Shift ඔබා වට්ටම ලියන්න ➔ Enter ඔබා ලැබුණු මුදල ලියා Enter ඔබා බිල අවසන් කරන්න.' : 'Shift moves to Bill Discount ➔ Enter moves to Cash Received ➔ Enter completes checkout.'}
+              </small>
+            </div>
+          </div>
+        </div>
+
+        <!-- 2. Selling Physical Items (Books, Stationery, Toys, Keytags) -->
+        <div class="table-card" style="padding:22px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+            <span style="font-size:22px;">📚</span>
+            <h3 style="margin:0; font-size:18px; font-weight:800;">
+              ${isSi ? '1. පොත්, ලිපිද්‍රව්‍ය, සෙල්ලම් බඩු සහ කීටැග් අලෙවිය' : '1. Selling Physical Products (Books, Stationery, Toys & Keytags)'}
+            </h3>
+          </div>
+          <div style="font-size:13.5px; line-height:1.65; color:var(--text-dim); display:flex; flex-direction:column; gap:10px;">
+            <p style="margin:0;">
+              ${isSi 
+                ? '<b>බාර්කෝඩ් හෝ ISBN ස්කෑන් කිරීම:</b> ස්කෑනරය මගින් ඕනෑම පොතක ඇති 13-digit ISBN බාර්කෝඩ් එකක් හෝ ඇසුරුමක ඇති බාර්කෝඩ් එකක් ස්කෑන් කළ විට, එය ක්ෂණිකව බිලට එකතු වේ. තනි පෑන්, පැන්සල් හෝ යතුරු රඳවනයක් වැනි බාර්කෝඩ් නොමැති භාණ්ඩ සඳහා නමේ කොටසක් (උදා: Atlas Blue හෝ Keytag) සෙවුම් තීරුවේ ටයිප් කරන්න.' 
+                : '<b>Scanning Barcodes & ISBNs:</b> Scan any book ISBN or stationery package with your barcode scanner (shortcut F1). The item is instantly verified and added to the bill. For unboxed pens or keytags, type the item name (e.g. "Atlas Blue" or "Keytag") in the search box.'}
+            </p>
+            <p style="margin:0;">
+              ${isSi 
+                ? '<b>ප්‍රමාණය වෙනස් කිරීම සහ වට්ටම්:</b> බිලෙහි ඇති ඕනෑම භාණ්ඩයක ප්‍රමාණය + සහ - බොත්තම් වලින් හෝ අගය කෙලින්ම ලියා වෙනස් කළ හැක. පාරිභෝගිකයාට එක් එක් භාණ්ඩය සඳහා ප්‍රතිශත (Disc %) වට්ටමක් හෝ සම්පූර්ණ බිලටම රුපියල් (LKR) වට්ටමක් (Shift යතුර) ලබා දිය හැක.' 
+                : '<b>Adjusting Quantities & Discounts:</b> Adjust line quantities using + / - steppers or direct number input. You can grant a line item percentage discount (Disc %) or an overall net Bill Discount in LKR by pressing Shift.'}
+            </p>
+            <p style="margin:0;">
+              ${isSi 
+                ? '<b>ගෙවීම් ක්‍රමය (Cash vs Card):</b> මුදල් ගෙවීමේදී ලැබුණු මුදල ඇතුළත් කළ විට ඉතිරිය (Balance / Change) ස්වයංක්‍රීයව ගණනය වේ. කාඩ්පත් ගෙවීම් සඳහා "Card" බොත්තම තෝරා අයකැමි යන්ත්‍රයෙන් කාඩ්පත ස්වයිප් කර බිල අවසන් කරන්න.' 
+                : '<b>Payment Modes:</b> In Cash mode, type the received cash and the system calculates customer balance change. In Card mode, the exact payable total is matched for your POS credit/debit card swipe machine.'}
+            </p>
+          </div>
+        </div>
+
+        <!-- 3. Using the Print & Copy Speed Calculator (F2) -->
+        <div class="table-card" style="padding:22px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+            <span style="font-size:22px;">🖨️</span>
+            <h3 style="margin:0; font-size:18px; font-weight:800;">
+              ${isSi ? '2. ෆොටෝකොපි, මුද්‍රණ, ලැමිනේට් සහ ටයිපින් සේවා ගණකය (F2)' : '2. Print, Copy, Laminating & Typing Speed Calculator (F2)'}
+            </h3>
+          </div>
+          <div style="font-size:13.5px; line-height:1.65; color:var(--text-dim); display:flex; flex-direction:column; gap:12px;">
+            <p style="margin:0;">
+              ${isSi 
+                ? 'පාරිභෝගිකයෙකු පිටු 45ක දෙපැත්ත ෆොටෝකොපි හෝ කලර් පිටපත් ලබා ගැනීමට පැමිණි විට හස්තීයව ගණනය කිරීම අවශ්‍ය නොවේ. <b>F2</b> ඔබන්න හෝ POS තිරයේ ඉහළ ඇති <b>"🖨️ Copy / Print (F2)"</b> ඔබන්න.' 
+                : 'When a customer brings 45 pages of double-sided photocopy or color printouts, do not calculate manually. Simply press <b>F2</b> or click <b>"🖨️ Copy / Print (F2)"</b> on the POS header.'}
+            </p>
+            <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:10px;">
+              <div style="background:var(--bg-input); padding:12px; border-radius:10px; border:1px solid var(--border);">
+                <b style="color:var(--text-main); font-size:12.5px;">📄 ${isSi ? 'ෆොටෝකොපි සහ පරිගණක ප්‍රින්ට්' : 'Photocopy & Document Print'}</b>
+                <small class="muted" style="display:block; margin-top:4px; font-size:11.5px;">
+                  ${isSi ? 'A4 තනි පැත්ත (රු. 10), දෙපැත්ත (රු. 15), A4 කලර් (රු. 50), A3 B/W (රු. 25), A3 කලර් (රු. 120), USB/Email ප්‍රින්ට් (රු. 15).' : 'A4 1-Side (LKR 10), 2-Sided (LKR 15), A4 Color (LKR 50), A3 B/W (LKR 25), A3 Color (LKR 120), USB/Email Print (LKR 15).'}
+                </small>
+              </div>
+              <div style="background:var(--bg-input); padding:12px; border-radius:10px; border:1px solid var(--border);">
+                <b style="color:var(--text-main); font-size:12.5px;">🛡️ ${isSi ? 'ලැමිනේට් සේවා' : 'Lamination Services'}</b>
+                <small class="muted" style="display:block; margin-top:4px; font-size:11.5px;">
+                  ${isSi ? 'හැඳුනුම්පත් / රියදුරු බලපත්‍ර (රු. 80), A4 සහතිකපත් (රු. 150), A3 පෝස්ටර් (රු. 300).' : 'ID Card / License (LKR 80), A4 Certificate (LKR 150), A3 Poster (LKR 300).'}
+                </small>
+              </div>
+              <div style="background:var(--bg-input); padding:12px; border-radius:10px; border:1px solid var(--border);">
+                <b style="color:var(--text-main); font-size:12.5px;">⌨️ ${isSi ? 'ටයිපින් සහ ලේඛන සේවා' : 'Typing & Document Services'}</b>
+                <small class="muted" style="display:block; margin-top:4px; font-size:11.5px;">
+                  ${isSi ? 'සිංහල ලිපි ටයිප් කිරීම (රු. 200), ඉංග්‍රීසි ගිවිසුම් (රු. 150), CV හැදීම (රු. 500), PDF ස්කෑන් කිරීම (රු. 30).' : 'Sinhala Letter Typing (LKR 200), English Agreement (LKR 150), CV Creation (LKR 500), PDF Scanning (LKR 30).'}
+                </small>
+              </div>
+              <div style="background:var(--bg-input); padding:12px; border-radius:10px; border:1px solid var(--border);">
+                <b style="color:var(--text-main); font-size:12.5px;">🌀 ${isSi ? 'පොත් බයින්ඩින්' : 'Book Binding'}</b>
+                <small class="muted" style="display:block; margin-top:4px; font-size:11.5px;">
+                  ${isSi ? 'ස්පයිරල් බයින්ඩින් කුඩා (රු. 180), ලොකු (රු. 280), ටේප් බයින්ඩින් (රු. 120).' : 'Spiral Binding Small (LKR 180), Large (LKR 280), Tape Binding (LKR 120).'}
+                </small>
+              </div>
+            </div>
+            <p style="margin:0;">
+              ${isSi 
+                ? '<b>තොග සීමා නොමැති වීම (Unlimited Service):</b> ෆොටෝකොපි සහ ටයිපින් වැනි සේවාවන් සඳහා තොග ගණන් (Stock counts) බලපෑමක් නොකරයි. එබැවින් තොග අවසන් වීමක් සිදු නොවන අතර ඕනෑම පිටු ගණනක් ක්ෂණිකව බිල් කළ හැක.' 
+                : '<b>Unlimited Service Architecture:</b> Print and typing jobs are configured as Services (IsService = 1) and will never be blocked by zero stock at checkout.'}
+            </p>
+          </div>
+        </div>
+
+        <!-- 4. Quick Custom Items & Barcode Stickers (F3) -->
+        <div class="table-card" style="padding:22px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+            <span style="font-size:22px;">🏷️</span>
+            <h3 style="margin:0; font-size:18px; font-weight:800;">
+              ${isSi ? '3. ලියාපදිංචි නොවූ භාණ්ඩ (F3) සහ බාර්කෝඩ් ස්ටිකර් මුද්‍රණය' : '3. Quick Custom Items (F3) & Barcode Label Stickers'}
+            </h3>
+          </div>
+          <div style="font-size:13.5px; line-height:1.65; color:var(--text-dim); display:flex; flex-direction:column; gap:10px;">
+            <p style="margin:0;">
+              ${isSi 
+                ? '<b>ලියාපදිංචි නොවූ භාණ්ඩ විකිණීම (F3):</b> අලුතින් ගෙනා විශේෂිත යතුරු රඳවනයක් හෝ සෙල්ලම් බඩුවක් තවම ඉන්වෙන්ටරියට ඇතුළත් කර නොමැති නම්, <b>F3</b> ඔබා නම, මිල සහ ප්‍රමාණය ලියා එකවර බිලට එක්කරන්න.' 
+                : '<b>Open Price / Unlisted Items (F3):</b> When selling a specialty keytag, toy, or custom repair job that isn\'t pre-registered in inventory, press <b>F3</b> to specify the description, price, and quantity directly.'}
+            </p>
+            <p style="margin:0;">
+              ${isSi 
+                ? '<b>බාර්කෝඩ් ලේබල් මුද්‍රණය:</b> තොග පිටුවට (Inventory) ගොස් <b>"🏷️ Barcode Labels"</b> ඔබන්න. අවශ්‍ය භාණ්ඩය සහ ස්ටිකර් ගණන තෝරා ලේබල් ප්‍රින්ටරයකින් හෝ සාමාන්‍ය ස්ටිකර් කොළයකින් මුද්‍රණය කර භාණ්ඩවල අලවන්න.' 
+                : '<b>Printing Barcode Price Stickers:</b> Open Inventory and click <b>"🏷️ Barcode Labels"</b>. Choose the product and sticker quantity to preview and print clean barcode stickers with your store name, barcode lines, and LKR price.'}
+            </p>
+            <p style="margin:0;">
+              ${isSi 
+                ? '<b>ස්වයංක්‍රීය SKU සැකසීම:</b> අලුත් භාණ්ඩයක් ඇතුළත් කිරීමේදී බාර්කෝඩ් එකක් නොමැති නම් <b>"⚡ Auto SKU"</b> ඔබන්න. පද්ධතිය විසින්ම අද්විතීය බාර්කෝඩ් අංකයක් (උදා: BKP-948123) ස්වයංක්‍රීයව සාදයි.' 
+                : '<b>Auto SKU Generator:</b> When adding a loose item without a barcode, click <b>"⚡ Auto SKU"</b> to generate a clean barcode identifier (e.g. BKP-XXXXXX).'}
+            </p>
+          </div>
+        </div>
+
+        <!-- 5. Goods Inward (GRN) -->
+        <div class="table-card" style="padding:22px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+            <span style="font-size:22px;">📦</span>
+            <h3 style="margin:0; font-size:18px; font-weight:800;">
+              ${isSi ? '4. බෙදාහරින්නන්ගෙන් භාණ්ඩ ලැබීම් සටහන් කිරීම (GRN)' : '4. Stock Inward Receiving (GRN)'}
+            </h3>
+          </div>
+          <div style="font-size:13.5px; line-height:1.65; color:var(--text-dim); display:flex; flex-direction:column; gap:10px;">
+            <p style="margin:0;">
+              ${isSi 
+                ? 'ඇට්ලස්, රිචඩ්, සරසවි හෝ වෙනත් සැපයුම්කරුවන්ගෙන් තොග ලැබුණු විට <b>GRN Receiving</b> පිටුවට ගොස් <b>"+ Receive New GRN"</b> ඔබන්න. සැපයුම්කරුගේ නම, ලැබුණු ප්‍රමාණය සහ මිලදී ගත් ඒකක පිරිවැය (Unit Cost) සටහන් කර සුරකින්න. එමගින් තොග ප්‍රමාණයන් ක්ෂණිකව ඉහළ යයි.' 
+                : 'When stock arrives from distributors (Atlas Axillia, Richard Trading, Sarasavi, etc.), navigate to <b>GRN Receiving</b> and click <b>"+ Receive New GRN"</b>. Entering received quantities and unit costs updates stock counts and stores a permanent receiving voucher.'}
+            </p>
+          </div>
+        </div>
+
+        <!-- 6. Daily Reports & Drawer Balancing -->
+        <div class="table-card" style="padding:22px;">
+          <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
+            <span style="font-size:22px;">📊</span>
+            <h3 style="margin:0; font-size:18px; font-weight:800;">
+              ${isSi ? '5. දෛනික ආදායම් වාර්තා සහ ලාච්චුවේ මුදල් සමථය (Reports)' : '5. Daily Reports & Cash Drawer Balancing'}
+            </h3>
+          </div>
+          <div style="font-size:13.5px; line-height:1.65; color:var(--text-dim); display:flex; flex-direction:column; gap:10px;">
+            <p style="margin:0;">
+              ${isSi 
+                ? 'දවස අවසානයේදී <b>Reports</b> පිටුවට පිවිස දවසේ මුළු ආදායම, නිකුත් කළ බිල්පත් ගණන, මුදල් (Cash) සහ කාඩ්පත් (Card) මගින් ලැබුණු එකතුව පරීක්ෂා කර මුදල් ලාච්චුවේ ඇති මුදල සමඟ සමථයකට පත්කර ගන්න. භාණ්ඩ අනුව වාර්තාවෙන් (Item Sales) වැඩිපුරම අලෙවි වූ පොත් සහ ලිපිද්‍රව්‍ය පිළිබඳ තොරතුරු ලබාගත හැක.' 
+                : 'At end of shift, navigate to <b>Reports</b> to review daily revenue, total invoices, and the exact Cash vs Card split to balance against your physical register drawer. The Item Sales report shows the top-selling stationery, books, and total copy pages.'}
+            </p>
+          </div>
+        </div>
+
+      </div>
+    </div>
+  `;
 }
 
 /* Initialize App */

@@ -3,7 +3,10 @@
 <head>
   <meta charset="utf-8">
   <meta http-equiv="Content-Security-Policy" content="default-src 'self' https://fonts.googleapis.com https://fonts.gstatic.com; img-src 'self' data: https: http:; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; script-src 'self'">
-  <title>Kade POS Enterprise</title>
+  <title>Amectar BookShop & Service POS</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@400;500;600;700;800;900&family=Plus+Jakarta+Sans:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
   <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -26,11 +29,11 @@
     <div class="auth-card">
       <div class="auth-brand-badge">
         <div class="brand-icon-box">
-          <svg viewBox="0 0 24 24"><rect x="2" y="3" width="20" height="14" rx="2"/><line x1="8" y1="21" x2="16" y2="21"/><line x1="12" y1="17" x2="12" y2="21"/><path d="M6 12h12"/></svg>
+          <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="13" y2="11"/></svg>
         </div>
         <div>
-          <span class="auth-version-tag">ENTERPRISE POS</span>
-          <h1 class="auth-title">KadePOS</h1>
+          <span class="auth-version-tag">BOOKSHOP & SERVICES POS</span>
+          <h1 class="auth-title">Amectar</h1>
         </div>
       </div>
 
@@ -164,8 +167,12 @@
     <aside class="sidebar">
       <!-- Brand at top -->
       <div class="sidebar-brand">
+        <div class="brand-icon-box">
+          <svg viewBox="0 0 24 24"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/><line x1="8" y1="7" x2="16" y2="7"/><line x1="8" y1="11" x2="13" y2="11"/></svg>
+        </div>
         <div class="brand-text-col">
-          <span class="brand-name">KadePOS</span>
+          <span class="brand-name">Amectar</span>
+          <span class="brand-sub-badge">BOOKSHOP & POS</span>
         </div>
       </div>
 
@@ -222,8 +229,8 @@
   <!-- Dedicated Standard Thermal Printable Receipt Container for Thermal Printers -->
   <div id="printableReceiptArea" class="printable-thermal-receipt-area" style="display:none;"></div>
 
-  <!-- Load Food Catalog & Main Logic -->
-  <script src="food-catalog.js"></script>
+  <!-- Load BookShop & Services Catalog & Main Logic -->
+  <script src="bookshop-catalog.js"></script>
   <script src="app.js"></script>
 </body>
 </html>
