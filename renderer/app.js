@@ -186,13 +186,13 @@ const D = {
   activationCode: ['Monthly Activation / Renewal Code', 'මාසික සක්‍රිය / අලුත් කිරීමේ කේතය'],
   enterCode: ['Enter Monthly Renewal Code', 'මාසික අලුත් කිරීමේ කේතය ඇතුළත් කරන්න'],
   activateCode: ['Activate Code', 'කේතය සක්‍රිය කරන්න'],
-  codePlaceholder: ['e.g. KP-XXXX-XXXX-XXXX', 'උදා: KP-XXXX-XXXX-XXXX'],
+  codePlaceholder: ['e.g. B1K1P1A9X7', 'උදා: B1K1P1A9X7'],
   subActive: ['Subscription Active & Unlocked', 'දායකත්වය සක්‍රියයි'],
   subDueSoon: ['Subscription Payment Due Soon', 'දායකත්ව ගෙවීම ඉක්මනින් සම්පූර්ණ කරන්න'],
   subLocked: ['Terminal Suspended — Payment Required', 'පර්යන්තය අත්හිටුවා ඇත — ගෙවීමක් අවශ්‍යයි'],
   codeSuccess: ['Code activated successfully! Subscription extended for {p}.', 'කේතය සාර්ථකව සක්‍රිය විය! {p} සඳහා දායකත්වය දීර්ඝ කරන ලදී.'],
   codeInvalid: ['Invalid or already used activation code. Please contact vendor.', 'වලංගු නොවන හෝ භාවිතා කළ කේතයකි. කරුණාකර විකුණුම්කරු අමතන්න.'],
-  vendorCodes: ['Master Activation Codes (50 Codes)', 'ප්‍රධාන සක්‍රිය කිරීමේ කේත (කේත 50)'],
+  vendorCodes: ['Secret Pattern Code Generator & History', 'රහස් රටා කේත ජනකය සහ ඉතිහාසය'],
   copyCode: ['Copy Code', 'කේතය පිටපත්'],
   allCodes: ['All Codes', 'සියලු කේත'],
   availCodes: ['Available', 'භාවිතා නොකළ'],
@@ -459,14 +459,14 @@ function showCodeModal() {
         <span style="font-size:20px;">🛡️</span>
         <div>
           <b style="font-size:13px; color:var(--text-main);">${t('activationCode')}</b>
-          <p class="small muted" style="margin:2px 0 0; font-size:11.5px;">Enter the 16-character code from your vendor to instantly renew your subscription and prevent terminal interruption.</p>
+          <p class="small muted" style="margin:2px 0 0; font-size:11.5px;">Enter the 10-digit code from your vendor to instantly renew your monthly subscription and prevent terminal interruption.</p>
         </div>
       </div>
 
       <form id="modalCodeForm" style="display:flex; flex-direction:column; gap:12px;">
         <label>
-          <span style="font-size:12px; font-weight:700; margin-bottom:6px; display:block;">Renewal Code:</span>
-          <input id="modalCodeInp" name="code" placeholder="${t('codePlaceholder')}" style="font-family:monospace; font-weight:700; font-size:15px; letter-spacing:1.5px; text-transform:uppercase; text-align:center; padding:10px;" required autocomplete="off">
+          <span style="font-size:12px; font-weight:700; margin-bottom:6px; display:block;">10-Digit Renewal Code:</span>
+          <input id="modalCodeInp" name="code" maxlength="12" placeholder="e.g. B1K1P1A9X7" style="font-family:monospace; font-weight:800; font-size:16px; letter-spacing:2px; text-transform:uppercase; text-align:center; padding:11px;" required autocomplete="off">
         </label>
         <div style="display:flex; justify-content:flex-end; gap:8px; margin-top:8px;">
           <button type="button" class="btn btn-ghost" data-x>${t('cancel')}</button>
@@ -495,6 +495,7 @@ function showCodeModal() {
       toast(err.message, 1);
       btn.disabled = false;
       btn.textContent = t('activateCode');
+      await refreshSub();
     }
   };
 }
@@ -530,8 +531,49 @@ document.addEventListener('click', e => {
 const screen = id => ['login', 'lock', 'app'].forEach(s => $('#' + s).classList.toggle('hide', s !== id));
 
 function populateLockBankDetails() {
-  if (!sub?.bankDetails) return;
+  if (!sub) return;
+  const isTamper = sub.state === 'tamper_locked' || sub.tamperLocked;
+
+  // Security Fraud Lockdown Banner & Code Form toggle
+  const tamperBanner = $('#tamperLockBanner');
+  const codeForm = $('#lockCodeForm');
+  const statusBadge = $('#lkStatusBadge');
+  const mainTitle = $('#lkMainTitle');
+  const descText = $('#lkDescText');
+  const attemptWarning = $('#attemptWarning');
+
+  if (isTamper) {
+    if (tamperBanner) tamperBanner.classList.remove('hide');
+    if (codeForm) codeForm.classList.add('hide');
+    if (statusBadge) {
+      statusBadge.textContent = 'SECURITY LOCKDOWN';
+      statusBadge.style.color = 'var(--bad)';
+    }
+    if (mainTitle) mainTitle.textContent = 'Terminal Fraud Protection Active';
+    if (descText) descText.textContent = 'Multiple unauthorized code attempts detected. Code entry has been permanently locked to prevent cheating. Super Admin Aman Manthira Hapuarachchi must verify identity to unlock.';
+  } else {
+    if (tamperBanner) tamperBanner.classList.add('hide');
+    if (codeForm) codeForm.classList.remove('hide');
+    if (statusBadge) {
+      statusBadge.textContent = t('suspended');
+      statusBadge.style.color = '';
+    }
+    if (mainTitle) mainTitle.textContent = 'Subscription Payment Required';
+    if (descText) descText.textContent = t('suspendedMsg');
+
+    // Show attempt warning if any failed attempts exist
+    if (attemptWarning) {
+      if (sub.failedAttempts > 0) {
+        attemptWarning.classList.remove('hide');
+        attemptWarning.textContent = `⚠️ Security Warning: ${sub.failedAttempts} of 3 invalid attempts. (${sub.attemptsLeft} attempt${sub.attemptsLeft > 1 ? 's' : ''} left before security fraud lockout)`;
+      } else {
+        attemptWarning.classList.add('hide');
+      }
+    }
+  }
+
   const b = sub.bankDetails;
+  if (!b) return;
   $('#lkBankName').textContent = b.bankName || 'Commercial Bank';
   $('#lkAccName').textContent = (b.accName || 'H.A AMAN MANTHIRA HAPUARACHCHI').toUpperCase();
   $('#lkAccNo').textContent = b.accNumber || '8030194935';
@@ -550,7 +592,7 @@ async function boot() {
     return toast(e.message, 1);
   }
   populateLockBankDetails();
-  if (sub.state === 'locked') return screen('lock');
+  if (sub.state === 'locked' || sub.state === 'tamper_locked' || sub.tamperLocked) return screen('lock');
   me ? startApp() : screen('login');
 }
 
@@ -576,8 +618,8 @@ $('#lockForm').onsubmit = async e => {
   try {
     await call('sub:override', Object.fromEntries(new FormData(e.target)));
     e.target.reset();
-    toast(t('unlocked'));
-    boot();
+    toast('Terminal unlocked by Super Admin Aman Manthira Hapuarachchi');
+    await boot();
   } catch (x) {
     toast(x.message, 1);
   }
@@ -602,6 +644,7 @@ if (lcf) {
       toast(x.message, 1);
       btn.disabled = false;
       btn.textContent = t('activateCode');
+      await refreshSub();
     }
   };
 }
@@ -641,7 +684,7 @@ async function refreshSub() {
     sub = await call('sub:status');
     populateLockBankDetails();
     banner();
-    if (sub.state === 'locked') boot();
+    if (sub.state === 'locked' || sub.state === 'tamper_locked' || sub.tamperLocked) boot();
   } catch {}
 }
 
@@ -1236,6 +1279,7 @@ async function vDashboard() {
         toast(err.message, 1);
         btn.disabled = false;
         btn.textContent = t('activateCode');
+        await refreshSub();
       }
     };
   }
@@ -3849,24 +3893,72 @@ async function vSubs() {
       </div>
     </div>
 
-    <!-- Master Activation Codes Section -->
-    <div class="panel-card" style="margin-bottom:24px;">
-      <div class="panel-header-row" style="flex-wrap:wrap; gap:10px;">
+    <!-- Master Secret Pattern Activation System -->
+    <div class="panel-card" style="margin-bottom:24px; border:1px solid rgba(91,82,249,0.3); background:radial-gradient(ellipse at top right, rgba(91,82,249,0.06), transparent 70%);">
+      <div class="panel-header-row" style="flex-wrap:wrap; gap:12px;">
         <div>
-          <h3 class="panel-heading">🔑 ${t('vendorCodes')}</h3>
-          <small class="muted">50 Vendor renewal codes. Give an unused code to your customer when they pay the subscription fee.</small>
-        </div>
-        <div style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
-          <div class="theme-switch-pill" style="height:32px; padding:2px;">
-            <button type="button" class="theme-switch-btn active" id="codeFilterAll">${t('allCodes')} (${codesInfo.total})</button>
-            <button type="button" class="theme-switch-btn" id="codeFilterAvail">${t('availCodes')} (${codesInfo.available})</button>
-            <button type="button" class="theme-switch-btn" id="codeFilterUsed">${t('usedCodes')} (${codesInfo.used})</button>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <h3 class="panel-heading" style="margin:0;">🔐 ${t('vendorCodes')}</h3>
+            <span class="pill ok" style="font-size:10px; font-weight:800;">SUPER ADMIN ONLY</span>
           </div>
-          <input id="codeSearchInp" placeholder="Search code…" style="width:160px; height:32px; font-size:12px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg-input); color:var(--text-main);">
+          <small class="muted">Instant 10-digit monthly renewal codes with anti-cheat protection & lifetime single-use tracking.</small>
+        </div>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <button type="button" class="btn btn-primary btn-sm" id="btnGenSecretCode" style="font-weight:700; padding:7px 16px; gap:6px;">
+            <span>⚡</span> Generate Fresh Secret Code
+          </button>
         </div>
       </div>
 
-      <div id="codesGridContainer" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:10px; max-height:380px; overflow-y:auto; padding:6px 2px; margin-top:10px;">
+      <!-- Secret Pattern Rule Explanation Box (Confidential to Aman) -->
+      <div style="background:var(--bg-input); border-radius:12px; padding:14px 16px; margin-top:14px; border:1px dashed rgba(91,82,249,0.35);">
+        <div style="font-size:12px; font-weight:800; color:var(--brand); text-transform:uppercase; letter-spacing:0.5px; margin-bottom:6px;">
+          🤫 Confidential Vendor Algorithm Rules:
+        </div>
+        <div style="font-size:12.5px; line-height:1.65; color:var(--text-main);">
+          • <b>Code Format</b>: Exactly <b>10 alphanumeric characters</b> (letters & digits, uppercase/case-insensitive).<br>
+          • <b>Secret Rule</b>: Must contain <b>exactly three '1' digits</b> and <b>exactly one 'A' letter</b> (e.g., <code style="background:var(--bg-card); padding:2px 6px; border-radius:4px; font-weight:700; color:var(--accent-lime);">B1K1P1A9X7</code>, <code style="background:var(--bg-card); padding:2px 6px; border-radius:4px; font-weight:700; color:var(--accent-lime);">19A41R7X1K</code>). You can create valid codes in your head anytime!<br>
+          • <b>Anti-Cheat Fraud Lockdown</b>: If a customer attempts 3 random invalid codes, the terminal locks permanently in <b>Security Fraud Lockdown</b>.<br>
+          • <b>Fraud Unlock</b>: Requires Super Admin password and full name: <b style="color:var(--brand);">Aman Manthira Hapuarachchi</b>.<br>
+          • <b>Single-Use Protected</b>: When a code is redeemed, it is recorded in the SQL Server database so it can never be used again.
+        </div>
+      </div>
+
+      <!-- Active Generated Code Showcase -->
+      <div id="genResultCard" style="display:none; background:var(--bg-card); border-radius:12px; padding:16px 18px; margin-top:14px; border:1.5px solid var(--brand); box-shadow:0 8px 24px rgba(91,82,249,0.12);">
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+          <div>
+            <div style="display:flex; align-items:center; gap:6px;">
+              <span class="pill ok" style="font-size:10px; font-weight:800;">✓ FRESH CODE READY</span>
+              <span class="small muted">Matches 3×'1' + 1×'A' pattern & unused in DB</span>
+            </div>
+            <div id="genDisplayCode" style="font-family:monospace; font-size:26px; font-weight:900; letter-spacing:3px; color:var(--brand); margin-top:6px;">
+              ----------
+            </div>
+          </div>
+          <div style="display:flex; gap:8px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-sm btn-primary" id="btnCopyGenCode" style="padding:7px 14px; font-weight:700;">
+              📋 Copy Code
+            </button>
+            <button type="button" class="btn btn-sm" id="btnCopyWhatsAppMsg" style="padding:7px 14px; background:#25D366; color:#fff; border:none; font-weight:700; display:flex; align-items:center; gap:6px;">
+              💬 Copy WhatsApp Text
+            </button>
+          </div>
+        </div>
+      </div>
+
+      <!-- Lifetime Redeemed Codes History Section -->
+      <div style="margin-top:20px; border-top:1px solid var(--border); padding-top:16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+          <div>
+            <h4 style="margin:0; font-size:14px; font-weight:800;">📜 Lifetime Redeemed Codes History (${codesInfo.codes ? codesInfo.codes.length : 0})</h4>
+            <small class="muted">All codes successfully redeemed and permanently registered in the database.</small>
+          </div>
+          <input id="codeSearchInp" placeholder="Search redeemed code or period…" style="width:220px; height:32px; font-size:12px; padding:0 10px; border-radius:8px; border:1px solid var(--border); background:var(--bg-input); color:var(--text-main);">
+        </div>
+
+        <div id="codesGridContainer" style="display:grid; grid-template-columns:repeat(auto-fill, minmax(280px, 1fr)); gap:10px; max-height:280px; overflow-y:auto; padding:4px 2px;">
+        </div>
       </div>
     </div>
 
@@ -3900,78 +3992,88 @@ async function vSubs() {
     </div>
   `;
 
-  // Attach Activation Codes handlers
-  let currentFilter = 'all';
+  // Secret Pattern Code Generator & Lifetime Redeemed List
+  let latestGeneratedCode = '';
+
+  const genBtn = $('#btnGenSecretCode');
+  if (genBtn) {
+    genBtn.onclick = async () => {
+      try {
+        genBtn.disabled = true;
+        genBtn.innerHTML = '<span>⏳</span> Generating…';
+        const res = await call('sub:generateSecretCode');
+        latestGeneratedCode = res.code;
+        const resultCard = $('#genResultCard');
+        const display = $('#genDisplayCode');
+        if (resultCard && display) {
+          display.textContent = latestGeneratedCode;
+          resultCard.style.display = 'block';
+          resultCard.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        }
+        toast(`New Code ${latestGeneratedCode} generated!`);
+      } catch (err) {
+        toast('Failed to generate code: ' + err.message, 'warn');
+      } finally {
+        genBtn.disabled = false;
+        genBtn.innerHTML = '<span>⚡</span> Generate Fresh Secret Code';
+      }
+    };
+  }
+
+  const btnCopyGenCode = $('#btnCopyGenCode');
+  if (btnCopyGenCode) {
+    btnCopyGenCode.onclick = () => {
+      if (!latestGeneratedCode) return;
+      navigator.clipboard.writeText(latestGeneratedCode);
+      toast(`Code ${latestGeneratedCode} copied to clipboard!`);
+    };
+  }
+
+  const btnCopyWhatsAppMsg = $('#btnCopyWhatsAppMsg');
+  if (btnCopyWhatsAppMsg) {
+    btnCopyWhatsAppMsg.onclick = () => {
+      if (!latestGeneratedCode) return;
+      const msg = `Hello! Thank you for your payment. Here is your 1-Month Renewal Code for BookShop POS:\n\n*${latestGeneratedCode}*\n\nPlease enter this 10-character code on your POS lock screen or go to Settings > Activate Code to unlock.\n\nThank you!\n- Aman Manthira Hapuarachchi (Super Admin)`;
+      navigator.clipboard.writeText(msg);
+      toast('WhatsApp message template copied!');
+    };
+  }
+
   const renderCodesGrid = () => {
     const q = ($('#codeSearchInp')?.value || '').trim().toUpperCase();
-    const filtered = (codesInfo.codes || []).filter(c => {
-      if (currentFilter === 'avail' && c.used) return false;
-      if (currentFilter === 'used' && !c.used) return false;
-      if (q && !c.code.toUpperCase().includes(q)) return false;
+    const codesList = codesInfo.codes || [];
+    const filtered = codesList.filter(c => {
+      if (q && !c.code.toUpperCase().includes(q) && !(c.period || '').toUpperCase().includes(q)) return false;
       return true;
     });
 
     const container = $('#codesGridContainer');
     if (!container) return;
     if (!filtered.length) {
-      container.innerHTML = `<div class="muted small" style="grid-column:1/-1; text-align:center; padding:20px;">No activation codes match filter</div>`;
+      container.innerHTML = `<div class="muted small" style="grid-column:1/-1; text-align:center; padding:20px;">${codesList.length === 0 ? 'No codes have been redeemed yet. Terminal will log every activated code here.' : 'No redeemed codes match search.'}</div>`;
       return;
     }
 
     container.innerHTML = filtered.map(c => `
-      <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:var(--bg-input); border-radius:10px; border:1px solid ${c.used ? 'var(--border)' : 'rgba(91,82,249,0.3)'};">
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:10px 12px; background:var(--bg-input); border-radius:10px; border:1px solid var(--border);">
         <div>
-          <div style="font-family:monospace; font-weight:700; font-size:13px; color:${c.used ? 'var(--text-dim)' : 'var(--brand)'}; letter-spacing:0.5px;">
+          <div style="font-family:monospace; font-weight:700; font-size:13.5px; color:var(--text-main); letter-spacing:0.8px;">
             ${esc(c.code)}
           </div>
           <div style="font-size:10.5px; color:var(--text-muted); margin-top:2px;">
-            ${c.used 
-              ? `<span style="color:var(--text-dim);">Used for <b>${esc(c.usedPeriod || '—')}</b> · ${c.usedBy || ''}</span>` 
-              : `<span style="color:var(--accent-lime); font-weight:600;">Ready to send to customer</span>`}
+            Redeemed for <b>${esc(c.period || '—')}</b> · ${fd(c.usedAt)} · ${esc(c.usedBy || 'Customer')}
           </div>
         </div>
         <div>
-          ${c.used 
-            ? `<span class="pill" style="font-size:9.5px; opacity:0.6;">REDEEMED</span>` 
-            : `<button class="btn btn-sm btn-primary copy-sub-code-btn" data-code="${esc(c.code)}" style="font-size:11px; padding:3px 10px; height:auto;">
-                 Copy Code
-               </button>`}
+          <span class="pill" style="font-size:9.5px; opacity:0.8; font-weight:700;">REDEEMED</span>
         </div>
       </div>
     `).join('');
-
-    container.querySelectorAll('.copy-sub-code-btn').forEach(btn => {
-      btn.onclick = () => {
-        navigator.clipboard.writeText(btn.dataset.code);
-        toast(`Code ${btn.dataset.code} copied!`);
-      };
-    });
   };
 
   renderCodesGrid();
-
-  $('#codeFilterAll').onclick = () => {
-    currentFilter = 'all';
-    $('#codeFilterAll').classList.add('active');
-    $('#codeFilterAvail').classList.remove('active');
-    $('#codeFilterUsed').classList.remove('active');
-    renderCodesGrid();
-  };
-  $('#codeFilterAvail').onclick = () => {
-    currentFilter = 'avail';
-    $('#codeFilterAvail').classList.add('active');
-    $('#codeFilterAll').classList.remove('active');
-    $('#codeFilterUsed').classList.remove('active');
-    renderCodesGrid();
-  };
-  $('#codeFilterUsed').onclick = () => {
-    currentFilter = 'used';
-    $('#codeFilterUsed').classList.add('active');
-    $('#codeFilterAll').classList.remove('active');
-    $('#codeFilterAvail').classList.remove('active');
-    renderCodesGrid();
-  };
-  $('#codeSearchInp').oninput = renderCodesGrid;
+  const searchInp = $('#codeSearchInp');
+  if (searchInp) searchInp.oninput = renderCodesGrid;
 
   const editBankModal = () => formModal(
     'Configure Super Admin Bank Account (For Customer Subscriptions)',
