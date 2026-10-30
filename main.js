@@ -177,6 +177,7 @@ const ymd = d => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')
 
 async function subStatus() {
   const s = await getSettings();
+  const subEnabled = s.subEnabled !== '0'; // default true: subscription active; false: one-payment lifetime project
   const dueDay = +s.dueDay || 25, fee = +s.fee || 3000;
   const isTamperLocked = s.subTamperLocked === '1';
   const failedAttempts = +s.subFailedAttempts || 0;
@@ -191,8 +192,10 @@ async function subStatus() {
   const installDateStr = `${inst.getFullYear()}-${String(inst.getMonth() + 1).padStart(2, '0')}-${String(inst.getDate()).padStart(2, '0')}`;
   const paid = new Set((await pool.request().query('SELECT DISTINCT Period FROM Payments')).recordset.map(r => r.Period));
   const res = {
-    state: isTamperLocked ? 'tamper_locked' : 'ok',
-    tamperLocked: isTamperLocked,
+    state: (isTamperLocked && subEnabled) ? 'tamper_locked' : 'ok',
+    subEnabled,
+    isLifetime: !subEnabled,
+    tamperLocked: isTamperLocked && subEnabled,
     failedAttempts,
     attemptsLeft: Math.max(0, 3 - failedAttempts),
     superAdminName: 'Aman Manthira Hapuarachchi',
@@ -207,6 +210,20 @@ async function subStatus() {
       bankNotes: s.bankNotes || 'Please state your store name and bill invoice ID as payment reference.'
     }
   };
+
+  // If subscription is turned OFF (One-time payment project / perpetual lifetime license)
+  if (!subEnabled) {
+    return {
+      ...res,
+      state: 'ok',
+      tamperLocked: false,
+      isLifetime: true,
+      due: null,
+      period: null,
+      daysLeft: null,
+      nextDue: null
+    };
+  }
 
   // If locked by anti-cheat tamper protection, override any other state
   if (isTamperLocked) {
@@ -283,7 +300,7 @@ function handle(ch, roles, fn) {
         if (!session) throw new Error('Not logged in');
         if (!hasAccess(ch, session, roles)) throw new Error('Permission denied');
         const curSt = await subStatus();
-        if (!ch.startsWith('sub:') && (curSt.state === 'locked' || curSt.state === 'tamper_locked')) throw new Error('SYSTEM_LOCKED');
+        if (curSt.subEnabled && !ch.startsWith('sub:') && (curSt.state === 'locked' || curSt.state === 'tamper_locked')) throw new Error('SYSTEM_LOCKED');
       }
       return { ok: true, data: await fn(p) };
     } catch (e) { return { ok: false, error: e.message }; }
@@ -345,10 +362,12 @@ handle('sub:overview', ADMIN, async () => ({
   status: await subStatus(),
   payments: (await pool.request().query('SELECT TOP 36 * FROM Payments ORDER BY Id DESC')).recordset
 }));
-handle('sub:save', ADMIN, async ({ fee, dueDay, installedOn }) => {
-  if (!(fee >= 0) || !(dueDay >= 1 && dueDay <= 28)) throw new Error('Fee must be >= 0 and due day 1-28');
-  await setSetting('fee', fee);
-  await setSetting('dueDay', Math.floor(dueDay));
+handle('sub:save', ADMIN, async ({ fee, dueDay, installedOn, subEnabled }) => {
+  if (subEnabled !== undefined) {
+    await setSetting('subEnabled', subEnabled ? '1' : '0');
+  }
+  if (fee !== undefined && fee >= 0) await setSetting('fee', fee);
+  if (dueDay !== undefined && dueDay >= 1 && dueDay <= 28) await setSetting('dueDay', Math.floor(dueDay));
   if (installedOn) {
     const d = new Date(installedOn);
     if (!isNaN(d.getTime())) {
@@ -356,6 +375,15 @@ handle('sub:save', ADMIN, async ({ fee, dueDay, installedOn }) => {
     }
   }
   return true;
+});
+handle('sub:setMode', ADMIN, async ({ subEnabled }) => {
+  const isEnabled = Boolean(subEnabled);
+  await setSetting('subEnabled', isEnabled ? '1' : '0');
+  if (!isEnabled) {
+    await setSetting('subTamperLocked', '0');
+    await setSetting('subFailedAttempts', '0');
+  }
+  return await subStatus();
 });
 handle('sub:saveBank', ADMIN, async ({ bankName, accName, accNumber, bankBranch, bankNotes }) => {
   await setSetting('bankName', (bankName || '').trim());
@@ -792,14 +820,35 @@ handle('dashboard:overview', ALL, async () => {
     GROUP BY PaymentMethod
   `)).recordset;
 
-  // Top 5 selling items (last 30 days)
-  const topItems = (await q().query(`
-    SELECT TOP 5 si.ItemName Name, SUM(si.Qty) Qty, SUM(si.LineTotal) Total
+  // Top selling items: Today, Weekly (7 days), and Monthly (30 days)
+  const topItemsToday = (await q().query(`
+    SELECT TOP 6 si.ItemName Name, ISNULL(MAX(i.Category), 'General') Category, SUM(si.Qty) Qty, ISNULL(SUM(si.LineTotal), 0) Total, COUNT(DISTINCT s.Id) Bills
     FROM SaleItems si
+    LEFT JOIN Items i ON i.Id = si.ItemId
+    JOIN Sales s ON s.Id = si.SaleId
+    WHERE CAST(s.CreatedAt AS DATE) = CAST(GETDATE() AS DATE)
+    GROUP BY si.ItemName
+    ORDER BY Total DESC, Qty DESC
+  `)).recordset;
+
+  const topItemsWeekly = (await q().query(`
+    SELECT TOP 6 si.ItemName Name, ISNULL(MAX(i.Category), 'General') Category, SUM(si.Qty) Qty, ISNULL(SUM(si.LineTotal), 0) Total, COUNT(DISTINCT s.Id) Bills
+    FROM SaleItems si
+    LEFT JOIN Items i ON i.Id = si.ItemId
+    JOIN Sales s ON s.Id = si.SaleId
+    WHERE s.CreatedAt >= DATEADD(day, -7, GETDATE())
+    GROUP BY si.ItemName
+    ORDER BY Total DESC, Qty DESC
+  `)).recordset;
+
+  const topItemsMonthly = (await q().query(`
+    SELECT TOP 6 si.ItemName Name, ISNULL(MAX(i.Category), 'General') Category, SUM(si.Qty) Qty, ISNULL(SUM(si.LineTotal), 0) Total, COUNT(DISTINCT s.Id) Bills
+    FROM SaleItems si
+    LEFT JOIN Items i ON i.Id = si.ItemId
     JOIN Sales s ON s.Id = si.SaleId
     WHERE s.CreatedAt >= DATEADD(day, -30, GETDATE())
     GROUP BY si.ItemName
-    ORDER BY Total DESC
+    ORDER BY Total DESC, Qty DESC
   `)).recordset;
 
   // Cashier sales summary
@@ -833,7 +882,10 @@ handle('dashboard:overview', ALL, async () => {
     trendDays: last14Days,
     categorySales,
     paymentMethods,
-    topItems,
+    topItems: topItemsMonthly,
+    topItemsToday,
+    topItemsWeekly,
+    topItemsMonthly,
     cashiers
   };
 });

@@ -238,7 +238,17 @@ const D = {
   Cash: ['Cash', 'මුදල්'],
   Card: ['Card', 'කාඩ්පත්'],
   Bank: ['Bank Transfer', 'බැංකු හුවමාරු'],
-  Other: ['Other', 'වෙනත්']
+  Other: ['Other', 'වෙනත්'],
+
+  // Dashboard & Best Selling Items
+  bestSelling: ['Best Selling Items', 'වැඩිම අලෙවියක් ඇති භාණ්ඩ'],
+  bestSellingSub: ['Top revenue & volume performers', 'වැඩිම ආදායමක් සහ ඉල්ලුමක් ඇති භාණ්ඩ'],
+  timeToday: ['Today', 'අද'],
+  timeWeek: ['This Week (7D)', 'මෙම සතිය (දින 7)'],
+  timeMonth: ['This Month (30D)', 'මෙම මාසය (දින 30)'],
+  noTopSales: ['No sales recorded for this timeframe yet', 'මෙම කාලසීමාව තුළ විකුණුම් වාර්තා වී නොමැත'],
+  themeStudio: ['Theme Studio & Aesthetics', 'තේමා මැදිරිය'],
+  unitsSold: ['units sold', 'අලෙවි වූ ප්‍රමාණය']
 };
 
 let lang = 'en';
@@ -249,24 +259,97 @@ const t = (k, o) => {
 };
 const fd = d => new Date(d).toLocaleString(lang === 'si' ? 'si-LK' : 'en-GB');
 
-/* ---------- Theme Switcher (Light / Dark) ---------- */
+/* ---------- Modern 6-Theme Design System ---------- */
+const THEMES = [
+  { id: 'light', name: 'Aurora Modern', nameSi: 'ඕරෝරා ආලෝකය', desc: 'Clean Minimalist Light · SaaS & Apple Inspired', icon: '☀️', swatch: 'theme-swatch-light', bg: '#f4f6fc', brand: '#4f46e5' },
+  { id: 'dark', name: 'Cyber Obsidian', nameSi: 'සයිබර් අඳුරු', desc: 'Titanium Dark & Neon Indigo Glow', icon: '🌙', swatch: 'theme-swatch-dark', bg: '#090d16', brand: '#6366f1' },
+  { id: 'emerald', name: 'Midnight Emerald', nameSi: 'මිඩ්නයිට් එමරල්ඩ්', desc: 'Luxury Forest Green & Champagne Gold · Private Banking Style', icon: '🌲', swatch: 'theme-swatch-emerald', bg: '#041411', brand: '#10b981' },
+  { id: 'purple', name: 'Velvet Nebula', nameSi: 'වෙල්වට් නෙබියුලා', desc: 'Cosmic Violet & Radiant Neon Magenta Glow', icon: '🔮', swatch: 'theme-swatch-purple', bg: '#0c0617', brand: '#a855f7' },
+  { id: 'bookstore', name: 'Artisan Bookshop', nameSi: 'පොත්හල් තේමාව', desc: 'Warm Roasted Espresso Leather & Antique Amber · Cozy Library', icon: '📖', swatch: 'theme-swatch-bookstore', bg: '#16110d', brand: '#d97706' },
+  { id: 'ocean', name: 'Nordic Arctic', nameSi: 'නෝර්ඩික් ආක්ටික්', desc: 'Deep Naval Marine & Glacier Cyan · High Contrast Precision', icon: '🌊', swatch: 'theme-swatch-ocean', bg: '#061220', brand: '#0ea5e9' }
+];
+
 function initTheme() {
   const saved = localStorage.getItem('kade_theme') || 'light';
   setTheme(saved);
 }
 
 function setTheme(theme) {
-  document.documentElement.setAttribute('data-theme', theme);
-  try { localStorage.setItem('kade_theme', theme); } catch {}
-  document.querySelectorAll('.theme-switch-btn').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.mode === theme);
+  const valid = THEMES.some(x => x.id === theme) ? theme : 'light';
+  document.documentElement.setAttribute('data-theme', valid);
+  try { localStorage.setItem('kade_theme', valid); } catch {}
+  document.querySelectorAll('.theme-swatch-btn, .theme-switch-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.mode === valid);
   });
 }
 
+function showThemeStudioModal() {
+  const current = localStorage.getItem('kade_theme') || 'light';
+  const m = modal(`
+    <div class="modal-header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:24px;">🎨</span>
+        <div>
+          <h3 class="modal-title" style="margin:0;">${t('themeStudio')}</h3>
+          <small class="muted">Select from 6 distinct modern themes with completely customized sidebar styles, gradients & aesthetics.</small>
+        </div>
+      </div>
+      <button class="modal-close-x" data-x>✕</button>
+    </div>
+
+    <div class="theme-gallery-grid">
+      ${THEMES.map(th => {
+        const isActive = th.id === current;
+        return `
+          <div class="theme-card-option ${isActive ? 'active' : ''}" data-theme-id="${th.id}">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:20px;">${th.icon}</span>
+                <b style="font-size:14.5px; color:var(--text-main);">${lang === 'si' ? th.nameSi : th.name}</b>
+              </div>
+              <span class="pill ${isActive ? 'ok' : 'info'}" style="font-size:9.5px; padding:2px 7px;">
+                ${isActive ? 'CURRENT ACTIVE' : 'APPLY THEME'}
+              </span>
+            </div>
+
+            <p style="font-size:11.5px; color:var(--text-muted); margin:0; line-height:1.4;">${th.desc}</p>
+
+            <!-- Mini Visual Preview Pill showing theme colors -->
+            <div class="theme-preview-pill" style="background:${th.bg}; border:1.5px solid ${th.brand};">
+              <span style="color:${th.brand}; font-weight:800; font-size:12px;">BookShop POS</span>
+              <span style="background:${th.brand}; color:#fff; padding:2px 8px; border-radius:6px; font-size:10px; font-weight:800;">PREVIEW</span>
+            </div>
+          </div>
+        `;
+      }).join('')}
+    </div>
+  `);
+
+  m.querySelectorAll('.theme-card-option').forEach(card => {
+    card.onclick = () => {
+      const mode = card.dataset.themeId;
+      setTheme(mode);
+      const chosen = THEMES.find(x => x.id === mode);
+      toast(`Theme applied: ${chosen?.name || mode}`);
+      m.close();
+    };
+  });
+  m.querySelectorAll('[data-x]').forEach(el => el.onclick = m.close);
+}
+
 document.addEventListener('click', e => {
-  const btn = e.target.closest('.theme-switch-btn');
-  if (!btn) return;
-  setTheme(btn.dataset.mode);
+  const swatch = e.target.closest('.theme-swatch-btn, .theme-switch-btn');
+  if (swatch && swatch.dataset.mode) {
+    setTheme(swatch.dataset.mode);
+    const chosen = THEMES.find(x => x.id === swatch.dataset.mode);
+    if (chosen) toast(`Theme: ${chosen.name}`);
+    return;
+  }
+  const btnStudio = e.target.closest('#btnThemeStudio, .btn-open-themes');
+  if (btnStudio) {
+    showThemeStudioModal();
+    return;
+  }
 });
 
 initTheme();
@@ -592,7 +675,7 @@ async function boot() {
     return toast(e.message, 1);
   }
   populateLockBankDetails();
-  if (sub.state === 'locked' || sub.state === 'tamper_locked' || sub.tamperLocked) return screen('lock');
+  if (sub.subEnabled && (sub.state === 'locked' || sub.state === 'tamper_locked' || sub.tamperLocked)) return screen('lock');
   me ? startApp() : screen('login');
 }
 
@@ -660,7 +743,7 @@ $('#logout').onclick = async () => {
 /* Top Banner Notification near the 25th */
 function banner() {
   const b = $('#banner');
-  if (!sub || (sub.state !== 'warning' && sub.state !== 'locked')) return b.classList.add('hide');
+  if (!sub || !sub.subEnabled || (sub.state !== 'warning' && sub.state !== 'locked')) return b.classList.add('hide');
 
   const d = sub.daysLeft;
   const when = d > 0 ? t('inDays', { n: d }) : d === 0 ? t('today') : t('agoDays', { n: -d });
@@ -684,7 +767,7 @@ async function refreshSub() {
     sub = await call('sub:status');
     populateLockBankDetails();
     banner();
-    if (sub.state === 'locked' || sub.state === 'tamper_locked' || sub.tamperLocked) boot();
+    if (sub.subEnabled && (sub.state === 'locked' || sub.state === 'tamper_locked' || sub.tamperLocked)) boot();
   } catch {}
 }
 
@@ -942,6 +1025,7 @@ function renderDynamicWaveChart(days, width = 650, height = 210) {
    ========================================================================== */
 async function vDashboard() {
   const data = await call('dashboard:overview');
+  const isSub = sub?.subEnabled !== false;
   const b = sub?.bankDetails || {};
   const currentDueDay = sub?.dueDay || 25;
   const curPeriod = `${new Date().getFullYear()}-${String(new Date().getMonth() + 1).padStart(2, '0')}`;
@@ -1005,7 +1089,8 @@ async function vDashboard() {
           </div>
         </div>
 
-        <!-- Card 4: Due Calendar Card (Highlighting 25th) -->
+        <!-- Card 4: Due Calendar (Subscription Mode) OR Lifetime Ownership Badge (One-Payment Mode) -->
+        ${isSub ? `
         <div class="due-calendar-card">
           <div class="due-cal-header">
             <span>${new Date().toLocaleDateString(lang === 'si' ? 'si-LK' : 'en-US', { weekday: 'long' })}</span>
@@ -1025,9 +1110,22 @@ async function vDashboard() {
             <div class="cal-day-cell"><span>28</span><span>Wed</span></div>
           </div>
         </div>
+        ` : `
+        <div class="fin-stat-card" style="border-left: 5px solid var(--accent-lime); background: radial-gradient(ellipse at top right, rgba(16,185,129,0.08), transparent 70%);">
+          <div class="stat-text-col" style="width:100%;">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="stat-label-title">License Status</span>
+              <span class="pill ok" style="font-size:9.5px; font-weight:800;">PERPETUAL</span>
+            </div>
+            <div class="stat-main-number" style="color:var(--accent-lime); font-size:19px; margin:4px 0;">💎 Lifetime License</div>
+            <span class="stat-trend-sub" style="color:var(--text-main); font-weight:700;">One-Time Project · Full Access</span>
+            <div style="font-size:10.5px; color:var(--text-dim); margin-top:4px;">Installed: <b>${sub?.installedOn || 'Active'}</b> · Zero Recurring Fees</div>
+          </div>
+        </div>
+        `}
       </div>
 
-      <!-- Row 2: 3 Columns (Dynamic Real-Data Wave Chart + Super Admin Bank Card + History) -->
+      <!-- Row 2: 3 Columns (Dynamic Real-Data Wave Chart + Center Column + History) -->
       <div class="dash-middle-row">
         <!-- 1. Revenue Real-Data Dynamic Waves Chart -->
         <div class="chart-panel-card">
@@ -1055,7 +1153,8 @@ async function vDashboard() {
           </div>
         </div>
 
-        <!-- 2. Super Admin Bank Card ("My Cards" from screenshot) -->
+        <!-- 2. Middle Panel: Super Admin Bank Card (Subscription Mode) OR Perpetual Ownership Shield (Lifetime Mode) -->
+        ${isSub ? `
         <div class="bank-showcase-panel">
           <div class="panel-header-row">
             <h3 class="panel-heading">${t('myCardsTitle')}</h3>
@@ -1137,6 +1236,55 @@ async function vDashboard() {
             </form>
           </div>
         </div>
+        ` : `
+        <div class="panel-card" style="display:flex; flex-direction:column; justify-content:space-between; border:1px solid rgba(16,185,129,0.25); background:radial-gradient(ellipse at top left, rgba(16,185,129,0.06), transparent 70%);">
+          <div>
+            <div class="panel-header-row" style="margin-bottom:12px;">
+              <div style="display:flex; align-items:center; gap:8px;">
+                <span style="font-size:22px;">💎</span>
+                <div>
+                  <h3 class="panel-heading" style="margin:0;">Lifetime Software License</h3>
+                  <small class="muted">Perpetual Standalone Edition</small>
+                </div>
+              </div>
+              <span class="pill ok" style="font-size:10px; font-weight:800;">VERIFIED</span>
+            </div>
+
+            <div style="background:var(--bg-input); border-radius:14px; padding:14px; border:1px solid var(--border-light); margin-bottom:12px;">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <span style="font-size:11px; font-weight:800; color:var(--accent-lime); text-transform:uppercase; letter-spacing:0.5px;">✓ One-Payment Project</span>
+                <span class="small muted">Installed: ${sub?.installedOn || 'Active'}</span>
+              </div>
+              <div style="font-size:13.5px; font-weight:800; color:var(--text-main); margin-bottom:3px;">
+                Permanent Station Ownership
+              </div>
+              <small class="muted" style="display:block; font-size:11.5px; line-height:1.45;">
+                This POS software is licensed as a one-time payment project. Monthly renewals and recurring subscription requirements are completely disabled.
+              </small>
+            </div>
+
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:12px;">
+              <div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid var(--border-light);">
+                <span class="muted">License Type:</span>
+                <b style="color:var(--accent-lime);">Perpetual Lifetime Ownership</b>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding:5px 0; border-bottom:1px solid var(--border-light);">
+                <span class="muted">Recurring Fees:</span>
+                <b>None (0.00 LKR / Free forever)</b>
+              </div>
+              <div style="display:flex; justify-content:space-between; padding:5px 0;">
+                <span class="muted">System Access:</span>
+                <span style="color:var(--accent-lime); font-weight:700;">● 100% Unlocked</span>
+              </div>
+            </div>
+          </div>
+
+          <div style="margin-top:14px; padding:10px 12px; background:rgba(16,185,129,0.08); border-radius:10px; border:1px solid rgba(16,185,129,0.2); font-size:11px; color:var(--text-muted); display:flex; align-items:center; gap:8px;">
+            <span>🛡️</span>
+            <span>All cashier POS billing, inventory, GRN, barcode sticker printing and reporting are permanently active.</span>
+          </div>
+        </div>
+        `}
 
         <!-- 3. History / Recent Transactions Column with Payment Badges -->
         <div class="history-panel-card">
@@ -1147,11 +1295,13 @@ async function vDashboard() {
 
           <input class="history-search-input" id="histSearch" placeholder="Search invoices…">
 
-          <!-- Upcoming Subscription Payment Notice on 25th -->
+          ${isSub ? `
+          <!-- Upcoming Subscription Payment Notice on 25th (Subscription Mode Only) -->
           <div style="background:var(--brand-light); border-radius:12px; padding:10px 12px; display:flex; flex-direction:column; gap:2px;">
             <span style="font-size:10.5px; font-weight:800; color:var(--brand); text-transform:uppercase;">${t('upcomingPayments')}</span>
             <b style="font-size:12px; color:var(--text-main);">${t('softwareSubDue')}</b>
           </div>
+          ` : ''}
 
           <div class="history-list-stream" id="histStream">
             ${data.recentSales.length ? data.recentSales.map(s => `
@@ -1170,9 +1320,33 @@ async function vDashboard() {
         </div>
       </div>
 
-      <!-- Row 3: Category Breakdown & Payment Methods (Cash vs Card) -->
-      <div class="dash-bottom-row" style="grid-template-columns: 1.2fr 1fr;">
-        <!-- Category Sales Multi-color Breakdown -->
+      <!-- Row 3: Best Selling Items (Today / Weekly / Monthly Switcher) & Category Breakdown -->
+      <div class="dash-bottom-row" style="grid-template-columns: 1.35fr 1fr; margin-bottom: 20px;">
+        <!-- 1. Best Selling Items Panel -->
+        <div class="best-selling-panel">
+          <div class="best-selling-header">
+            <div>
+              <div style="display:flex; align-items:center; gap:8px;">
+                <h3 class="panel-heading" style="margin:0;">🏆 ${t('bestSelling')}</h3>
+                <span class="pill ok" style="font-size:10px; font-weight:800;">TOP REVENUE</span>
+              </div>
+              <small class="muted">${t('bestSellingSub')}</small>
+            </div>
+
+            <!-- Timeframe Pill Switcher -->
+            <div class="timeframe-pill" id="bestSellingTimeframe">
+              <button type="button" class="timeframe-btn active" data-timeframe="today">⚡ ${t('timeToday')}</button>
+              <button type="button" class="timeframe-btn" data-timeframe="weekly">📅 ${t('timeWeek')}</button>
+              <button type="button" class="timeframe-btn" data-timeframe="monthly">📊 ${t('timeMonth')}</button>
+            </div>
+          </div>
+
+          <!-- Dynamic Best Selling Stream Container -->
+          <div id="bestSellingContainer" class="best-selling-list">
+          </div>
+        </div>
+
+        <!-- 2. Category Sales Multi-color Breakdown -->
         <div class="panel-card" style="display:flex; flex-direction:column; gap:14px;">
           <div class="panel-header-row">
             <h3 class="panel-heading">${t('categorySales')}</h3>
@@ -1210,7 +1384,10 @@ async function vDashboard() {
             </div>
           ` : `<div class="muted small" style="text-align:center; padding:20px;">No category sales records in past 30 days</div>`}
         </div>
+      </div>
 
+      <!-- Row 4: Cash vs Card Payment Split & Staff Leaderboard -->
+      <div class="dash-bottom-row" style="grid-template-columns: 1fr 1fr;">
         <!-- Cash vs Card Payment Split -->
         <div class="panel-card" style="display:flex; flex-direction:column; gap:14px;">
           <div class="panel-header-row">
@@ -1236,28 +1413,113 @@ async function vDashboard() {
               <small class="muted">${cardMethod.Bills} transactions</small>
             </div>
           </div>
+        </div>
 
-          <!-- Staff Performance Leaderboard -->
+        <!-- Staff Performance Leaderboard -->
+        <div class="panel-card" style="display:flex; flex-direction:column; gap:12px;">
+          <div class="panel-header-row">
+            <h3 class="panel-heading">${t('staffLeaderboard')}</h3>
+            <span class="small muted">${data.cashiers?.length || 0} Staff</span>
+          </div>
+
           <div style="display:flex; flex-direction:column; gap:8px;">
-            <b style="font-size:12.5px; color:var(--text-muted);">${t('staffLeaderboard')}</b>
             ${data.cashiers?.length ? data.cashiers.map(c => `
-              <div style="display:flex; justify-content:space-between; align-items:center; padding:6px 10px; background:var(--bg-input); border-radius:8px; font-size:12px;">
-                <span>${esc(c.Cashier)}</span>
-                <b>${fmt(c.Total)} <span class="muted small">(${c.Bills} bills)</span></b>
+              <div style="display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--bg-input); border-radius:10px; font-size:12px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                  <span style="font-size:16px;">👤</span>
+                  <b>${esc(c.Cashier)}</b>
+                </div>
+                <div>
+                  <b style="color:var(--brand);">${fmt(c.Total)}</b> <span class="muted small">(${c.Bills} bills)</span>
+                </div>
               </div>
-            `).join('') : '<div class="muted small">No staff sales yet</div>'}
+            `).join('') : '<div class="muted small" style="text-align:center; padding:18px;">No staff sales yet</div>'}
           </div>
         </div>
       </div>
     </div>
   `;
 
-  // Attach Dashboard events
-  $('#dashViewBankBtn').onclick = showBankModal;
-  $('#dashCardCopyBtn').onclick = () => {
-    navigator.clipboard.writeText((b.accNumber || '8030194935').replace(/\s+/g, ''));
-    toast(t('copied'));
+  // Attach Dashboard events & Best Selling Items interactive switcher
+  let activeTimeframe = 'today';
+  if (!data.topItemsToday?.length && (data.topItemsWeekly?.length || data.topItemsMonthly?.length)) {
+    activeTimeframe = data.topItemsWeekly?.length ? 'weekly' : 'monthly';
+  }
+
+  const renderBestSellingList = (tf) => {
+    const list = tf === 'today' ? (data.topItemsToday || []) 
+               : tf === 'weekly' ? (data.topItemsWeekly || []) 
+               : (data.topItemsMonthly || []);
+    const container = $('#bestSellingContainer');
+    if (!container) return;
+
+    // Toggle active timeframe pill button
+    document.querySelectorAll('.timeframe-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.timeframe === tf);
+    });
+
+    if (!list.length) {
+      container.innerHTML = `
+        <div style="text-align:center; padding:34px 16px; background:var(--bg-input); border-radius:14px; border:1px dashed var(--border-light);">
+          <div style="font-size:32px; margin-bottom:8px;">🛍️</div>
+          <b style="font-size:13.5px; color:var(--text-main);">${t('noTopSales')}</b>
+          <p class="small muted" style="margin:5px 0 0; font-size:11.5px;">New sales transactions completed at the POS terminal will automatically rank here in real time.</p>
+        </div>
+      `;
+      return;
+    }
+
+    const maxTotal = Math.max(...list.map(x => +x.Total || 0), 1);
+
+    container.innerHTML = list.map((item, idx) => {
+      const rank = idx + 1;
+      const rankCls = rank === 1 ? 'rank-gold' : rank === 2 ? 'rank-silver' : rank === 3 ? 'rank-bronze' : 'rank-other';
+      const rankLabel = rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`;
+      const icon = catIcon(item.Category);
+      const pct = Math.max(10, Math.round(((+item.Total || 0) / maxTotal) * 100));
+
+      return `
+        <div class="best-selling-row">
+          <div style="display:flex; align-items:center; gap:10px; min-width:0; flex:1;">
+            <div class="rank-medal-badge ${rankCls}">${rankLabel}</div>
+            <div class="best-item-icon">${icon}</div>
+            <div class="best-item-details">
+              <span class="best-item-name" title="${esc(item.Name)}">${esc(item.Name)}</span>
+              <div class="best-item-meta">
+                <span class="pill info" style="font-size:9.5px; padding:1px 6px;">${esc(item.Category || 'General')}</span>
+                <span><b>${item.Qty}</b> ${t('unitsSold')}</span>
+                ${item.Bills ? `<span>· ${item.Bills} ${t('bills')}</span>` : ''}
+              </div>
+            </div>
+          </div>
+
+          <div class="best-item-rev-col">
+            <span class="best-item-rev">${fmt(item.Total)}</span>
+            <div class="best-progress-track" title="${pct}% of top seller volume">
+              <div class="best-progress-fill" style="width:${pct}%;"></div>
+            </div>
+          </div>
+        </div>
+      `;
+    }).join('');
   };
+
+  renderBestSellingList(activeTimeframe);
+
+  document.querySelectorAll('.timeframe-btn').forEach(btn => {
+    btn.onclick = () => {
+      activeTimeframe = btn.dataset.timeframe;
+      renderBestSellingList(activeTimeframe);
+    };
+  });
+
+  if ($('#dashViewBankBtn')) $('#dashViewBankBtn').onclick = showBankModal;
+  if ($('#dashCardCopyBtn')) {
+    $('#dashCardCopyBtn').onclick = () => {
+      navigator.clipboard.writeText((b.accNumber || '8030194935').replace(/\s+/g, ''));
+      toast(t('copied'));
+    };
+  }
 
   const dashCodeForm = $('#dashActivationForm');
   if (dashCodeForm) {
@@ -3800,7 +4062,10 @@ async function vSubs() {
     call('sub:overview'),
     call('sub:listCodes')
   ]);
-  const label = { ok: t('stActive'), warning: t('stWarn'), locked: t('stLocked') }[s.state];
+  const isSub = s.subEnabled !== false;
+  const label = !isSub 
+    ? '💎 One-Time Lifetime License Active' 
+    : { ok: t('stActive'), warning: t('stWarn'), locked: t('stLocked') }[s.state];
   const b = s.bankDetails || {};
 
   $('#view').innerHTML = `
@@ -3816,21 +4081,68 @@ async function vSubs() {
       </div>
     </div>
 
+    <!-- Project Licensing Model Switcher (Subscription vs One-Payment Lifetime License) -->
+    <div class="panel-card" style="margin-bottom:20px; border:2px solid ${isSub ? 'var(--brand)' : 'var(--accent-lime)'}; background:radial-gradient(ellipse at top left, ${isSub ? 'rgba(91,82,249,0.08)' : 'rgba(16,185,129,0.08)'}, transparent 70%);">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+        <div style="display:flex; align-items:center; gap:14px;">
+          <div style="width:48px; height:48px; border-radius:14px; background:${isSub ? 'var(--brand-light)' : 'rgba(16,185,129,0.15)'}; display:grid; place-items:center; font-size:24px;">
+            ${isSub ? '🔄' : '💎'}
+          </div>
+          <div>
+            <div style="display:flex; align-items:center; gap:8px;">
+              <h3 style="margin:0; font-size:16.5px; font-weight:800;">
+                Project License Model: <span style="color:${isSub ? 'var(--brand)' : 'var(--accent-lime)'};">${isSub ? 'Monthly Subscription Mode (Default)' : 'One-Time Payment Lifetime License'}</span>
+              </h3>
+              <span class="pill ${isSub ? 'info' : 'ok'}" style="font-size:10px; font-weight:800;">
+                ${isSub ? 'RECURRING MONTHLY' : 'ONE-TIME PROJECT'}
+              </span>
+            </div>
+            <p class="muted small" style="margin:3px 0 0; font-size:12px;">
+              ${isSub 
+                ? 'System operates on monthly recurring billing. Vendor bank card details & renewal code boxes appear on the 25th of every month.' 
+                : 'Subscription is TURNED OFF. This is a one-time payment project. Terminal will NEVER lock, and your personal bank card details are completely hidden from all other dashboards.'}
+            </p>
+          </div>
+        </div>
+
+        <div style="display:flex; align-items:center; gap:10px;">
+          <div class="theme-switch-pill" style="padding:4px; height:auto; gap:4px;">
+            <button type="button" class="theme-switch-btn ${isSub ? 'active' : ''}" id="btnModeSub" style="padding:7px 16px; font-size:12px; font-weight:700;">
+              🔄 Monthly Subscription
+            </button>
+            <button type="button" class="theme-switch-btn ${!isSub ? 'active' : ''}" id="btnModeLifetime" style="padding:7px 16px; font-size:12px; font-weight:700; ${!isSub ? 'background:var(--accent-lime); color:#fff;' : ''}">
+              💎 One-Time Lifetime License
+            </button>
+          </div>
+        </div>
+      </div>
+    </div>
+
     <!-- License State Card -->
-    <div class="fin-stat-card" style="margin-bottom:20px; border-left:5px solid ${s.state === 'ok' ? 'var(--accent-lime)' : s.state === 'warning' ? 'var(--accent-amber)' : 'var(--bad)'};">
+    <div class="fin-stat-card" style="margin-bottom:20px; border-left:5px solid ${!isSub ? 'var(--accent-lime)' : s.state === 'ok' ? 'var(--accent-lime)' : s.state === 'warning' ? 'var(--accent-amber)' : 'var(--bad)'};">
       <div>
         <div style="display:flex; align-items:center; gap:10px;">
           <h3 style="margin:0; font-size:18px;">${label}</h3>
-          <span class="pill ${s.state === 'ok' ? 'ok' : s.state === 'warning' ? 'warn' : 'no'}">${s.state.toUpperCase()}</span>
-          <span class="pill info">Free Month: ${s.freeMonth}</span>
+          <span class="pill ${!isSub ? 'ok' : s.state === 'ok' ? 'ok' : s.state === 'warning' ? 'warn' : 'no'}">
+            ${!isSub ? 'PERPETUAL LIFETIME' : s.state.toUpperCase()}
+          </span>
+          ${isSub ? `<span class="pill info">Free Month: ${s.freeMonth}</span>` : `<span class="pill ok">Zero Recurring Fees</span>`}
         </div>
         <p style="margin:8px 0 3px; font-size:13.5px;">
-          📅 <b>${t('installDate')}</b>: <b style="color:var(--brand);">${s.installedOn || 'Not Set'}</b> · Free Installation Month: <b>${s.freeMonth}</b> (No codes or fees needed)
+          📅 <b>${t('installDate')}</b>: <b style="color:var(--brand);">${s.installedOn || 'Not Set'}</b>
+          ${isSub ? `· Free Installation Month: <b>${s.freeMonth}</b> (No codes or fees needed)` : `· <b>Permanent Lifetime Software Ownership Granted</b>`}
         </p>
-        <p style="margin:3px 0 2px;">
-          ${t('monthlyFee')}: <b>${fmt(s.fee)}</b> · ${t('dueDay')}: <b>${s.dueDay}</b> ${t('dayOfMonth')} · First Monthly Subscription Begins: <b style="color:var(--brand);">${s.nextDue || 'Next month'}</b>
-        </p>
-        <small class="muted">${t('freeMonthNote')}</small>
+        ${isSub ? `
+          <p style="margin:3px 0 2px;">
+            ${t('monthlyFee')}: <b>${fmt(s.fee)}</b> · ${t('dueDay')}: <b>${s.dueDay}</b> ${t('dayOfMonth')} · First Monthly Subscription Begins: <b style="color:var(--brand);">${s.nextDue || 'Next month'}</b>
+          </p>
+          <small class="muted">${t('freeMonthNote')}</small>
+        ` : `
+          <p style="margin:3px 0 2px; color:var(--accent-lime); font-weight:700;">
+            ✓ Monthly fee collection disabled. No subscription codes or bank transfers required from client.
+          </p>
+          <small class="muted">You can switch this project back to Monthly Subscription mode at any time using the toggle above.</small>
+        `}
       </div>
     </div>
 
@@ -3838,8 +4150,11 @@ async function vSubs() {
     <div class="bank-showcase-panel" style="margin-bottom:24px;">
       <div class="panel-header-row">
         <div>
-          <h3 class="panel-heading">💳 ${t('superAdminBankDetails')}</h3>
-          <small class="muted">Customers and cashiers see this bank account on the 25th of every month to make payments.</small>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <h3 class="panel-heading" style="margin:0;">💳 ${t('superAdminBankDetails')}</h3>
+            ${!isSub ? `<span class="pill warn" style="font-size:10px; font-weight:700;">HIDDEN FROM CLIENT DASHBOARDS</span>` : ''}
+          </div>
+          <small class="muted">${isSub ? 'Customers and cashiers see this bank account on the 25th of every month to make payments.' : 'Because One-Time Lifetime License is active, cashiers and store owners do not see this bank card on their dashboard.'}</small>
         </div>
         <button class="btn btn-sm btn-primary" id="btnEditBank">Edit My Bank Details</button>
       </div>
@@ -4097,6 +4412,28 @@ async function vSubs() {
       vSubs();
     }
   );
+
+  const btnModeSub = $('#btnModeSub');
+  if (btnModeSub) {
+    btnModeSub.onclick = async () => {
+      if (s.subEnabled) return;
+      await call('sub:setMode', { subEnabled: true });
+      await refreshSub();
+      toast('Switched to Monthly Subscription Mode (Recurring)');
+      vSubs();
+    };
+  }
+
+  const btnModeLifetime = $('#btnModeLifetime');
+  if (btnModeLifetime) {
+    btnModeLifetime.onclick = async () => {
+      if (!s.subEnabled) return;
+      await call('sub:setMode', { subEnabled: false });
+      await refreshSub();
+      toast('Switched to One-Time Lifetime License! Subscriptions & bank details disabled on client dashboards.');
+      vSubs();
+    };
+  }
 
   $('#btnBankCfg').onclick = editBankModal;
   $('#btnEditBank').onclick = editBankModal;
