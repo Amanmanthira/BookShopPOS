@@ -2499,6 +2499,13 @@ tfoot td {
   transition: all 0.15s;
 }
 
+.pay-method-toggle:focus,
+.pay-method-toggle.keyboard-nav-active {
+  outline: 2px solid var(--brand);
+  box-shadow: 0 0 0 4px var(--brand-glow);
+  border-color: var(--brand);
+}
+
 .pay-method-btn:hover {
   color: var(--text-main);
 }
@@ -2507,6 +2514,14 @@ tfoot td {
   background: var(--bg-card);
   color: var(--brand);
   box-shadow: 0 2px 8px rgba(0,0,0,0.06);
+}
+
+.pay-method-btn.keyboard-selected {
+  outline: 2px solid var(--brand);
+  box-shadow: 0 0 12px var(--brand-glow);
+  background: var(--bg-card);
+  color: var(--brand);
+  transform: translateY(-1px);
 }
 
 .pay-card-indicator {

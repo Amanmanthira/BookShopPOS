@@ -943,7 +943,7 @@ handle('items:seedBookshop', ADMIN, async () => {
   return true;
 });
 
-handle('sales:checkout', ALL, async ({ lines, paid, paymentMethod, billDiscount }) => {
+handle('sales:checkout', ALL, async ({ lines, paid, paymentMethod, billDiscount, splitCash, splitCard }) => {
   if (!Array.isArray(lines) || !lines.length) throw new Error('Cart is empty');
   const tx = new sql.Transaction(pool); await tx.begin();
   try {
@@ -979,18 +979,35 @@ handle('sales:checkout', ALL, async ({ lines, paid, paymentMethod, billDiscount 
     const total = r2(Math.max(0, subtotal - discAmount));
 
     const method = (paymentMethod || 'Cash').trim();
-    paid = +paid;
+    paid = +paid || 0;
+    let balance = 0;
+    let finalSplitCash = 0;
+    let finalSplitCard = 0;
+
     if (method === 'Card') {
       paid = total;
+      balance = 0;
+    } else if (method === 'Split') {
+      finalSplitCash = r2(Math.max(0, +splitCash || 0));
+      finalSplitCard = r2(Math.max(0, +splitCard || Math.max(0, total - finalSplitCash)));
+      if (r2(finalSplitCash + finalSplitCard) < total) {
+        throw new Error('Split Cash + Card does not cover total bill');
+      }
+      if (paid < finalSplitCash) {
+        throw new Error('Cash received is less than the Cash portion of Split payment');
+      }
+      balance = r2(Math.max(0, paid - finalSplitCash));
     } else {
       if (!(paid >= total)) throw new Error('Cash received is less than the total');
+      balance = r2(Math.max(0, paid - total));
     }
-    const balance = r2(Math.max(0, paid - total));
+
+    const recordedPaid = method === 'Split' ? r2(paid + finalSplitCard) : paid;
 
     const sale = (await new sql.Request(tx)
       .input('c', sql.Int, session.id)
       .input('t', sql.Decimal(12, 2), total)
-      .input('p', sql.Decimal(12, 2), paid)
+      .input('p', sql.Decimal(12, 2), recordedPaid)
       .input('b', sql.Decimal(12, 2), balance)
       .input('m', sql.NVarChar, method)
       .input('d', sql.Decimal(12, 2), discAmount)
@@ -1015,6 +1032,8 @@ handle('sales:checkout', ALL, async ({ lines, paid, paymentMethod, billDiscount 
       paid,
       balance,
       paymentMethod: method,
+      splitCash: finalSplitCash,
+      splitCard: finalSplitCard,
       shopSettings: {
         shopName: st.shopName || 'Amectar Bookshop & Communication',
         shopTagline: st.shopTagline || 'Books, Stationery, Gifts & Print/Copy Services',

@@ -68,7 +68,7 @@ const D = {
   selectProduct: ['Search product to add (All categories)…', 'එක් කිරීමට භාණ්ඩය සොයන්න (සියලු කාණ්ඩ)…'],
   allCategories: ['All Categories', 'සියලු වර්ග'],
   qty: ['Quantity', 'ප්‍රමාණය'],
-  f1Hint: ['F1 Search', 'F1 සෙවීම'],
+  f1Hint: ['Type to Search', 'සෙවීමට ටයිප් කරන්න'],
   arrowKeysHint: ['Arrow Keys Select', 'ඊතල යතුරු තෝරන්න'],
   enterAddHint: ['Enter Add', 'Enter එකතු කරන්න'],
   enterPayHint: ['Enter Payment', 'Enter ගෙවීම'],
@@ -91,8 +91,8 @@ const D = {
   paymentBreakdown: ['Payment Method Breakdown (Cash vs Card)', 'මුදල් සහ කාඩ්පත් ගෙවීම් බෙදීම'],
   staffLeaderboard: ['Cashier Sales Ranking', 'අයකැමි කාර්යසාධනය'],
   inventoryAlerts: ['Low Stock Inventory Alerts', 'අඩු තොග භාණ්ඩ'],
-  copyPrintCalc: ['Copy, Print & Service Calculator (F2)', 'ෆොටෝකොපි සහ මුද්‍රණ ගණකය (F2)'],
-  quickItem: ['Quick Custom Item (F3)', 'ක්ෂණික භාණ්ඩයක් (F3)'],
+  copyPrintCalc: ['Copy, Print & Service Calculator', 'ෆොටෝකොපි සහ මුද්‍රණ ගණකය'],
+  quickItem: ['Quick Custom Item', 'ක්ෂණික භාණ්ඩයක්'],
   itemType: ['Item Type', 'භාණ්ඩ වර්ගය'],
   typeProduct: ['Physical Product (Track Stock)', 'භාණ්ඩය (තොග ගණනය වේ)'],
   typeService: ['Service / Print Job (No Stock Limit)', 'සේවාව (තොග සීමා රහිත)'],
@@ -106,7 +106,7 @@ const D = {
   discountsGiven: ['Discounts Given', 'ලබා දුන් වට්ටම්'],
 
   // POS
-  searchPos: ['Search product, category or scan barcode… (F9 Checkout)', 'භාණ්ඩය සොයන්න හෝ බාර්කෝඩ් ස්කෑන් කරන්න… (F9)'],
+  searchPos: ['Type any letter to search products or scan barcode…', 'භාණ්ඩය සොයන්න ඕනෑම අකුරක් ටයිප් කරන්න…'],
   all: ['All', 'සියල්ල'],
   stock: ['Stock', 'තොගය'],
   currentBill: ['Current Bill', 'වත්මන් බිල'],
@@ -117,11 +117,14 @@ const D = {
   paymentMethod: ['Payment Method', 'ගෙවීම් ක්‍රමය'],
   cash: ['Cash', 'මුදල්'],
   card: ['Card', 'කාඩ්පත්'],
+  split: ['Split (Cash + Card)', 'වෙන් කළ ගෙවීම (මුදල් + කාඩ්පත)'],
+  cashPortion: ['Cash Portion', 'මුදල් කොටස'],
+  cardPortion: ['Card Portion', 'කාඩ්පත් කොටස'],
   cashReceived: ['Cash Received', 'ලැබුණු මුදල'],
   balance: ['Balance / Change', 'ඉතිරිය'],
   shortBy: ['Short by', 'අඩුව'],
   cardReady: ['Ready for POS Card Swipe / Tap', 'කාඩ්පත් ගෙවීම් යන්ත්‍රය සූදානම්'],
-  checkout: ['Complete Sale (F9)', 'බිල් කරන්න (F9)'],
+  checkout: ['Complete Sale (Enter)', 'බිල් කරන්න (Enter)'],
   clearBill: ['Clear Bill', 'බිල හිස් කරන්න'],
   notEnough: ['Insufficient stock available', 'තොගය ප්‍රමාණවත් නොවේ'],
   cartEmpty: ['Cart is currently empty', 'බිල හිස් ය'],
@@ -248,7 +251,7 @@ const D = {
   noData: ['No records found', 'දත්ත නැත'],
 
   // Returns & Refunds
-  returnItem: ['Return Item / Refund (F4)', 'භාණ්ඩ ආපසු භාරගැනීම සහ මුදල් ආපසු ගෙවීම (F4)'],
+  returnItem: ['Customer Return / Refund', 'භාණ්ඩ ආපසු භාරගැනීම සහ මුදල් ආපසු ගෙවීම'],
   returnVoucher: ['Customer Return & Refund Voucher', 'පාරිභෝගික ආපසු භාරගැනීමේ වවුචරය'],
   findInvoice: ['Find Invoice / Bill', 'බිල්පත සොයන්න'],
   invPlaceholder: ['Enter Invoice No (e.g. INV-000042) or Bill ID…', 'ඉන්වොයිස් අංකය ඇතුළත් කරන්න (උදා: INV-000042)…'],
@@ -1715,14 +1718,33 @@ function renderStandardReceiptHtml(r, cfg = {}) {
         <span>LKR ${tot.toFixed(2)}</span>
       </div>
 
-      <div class="tr-sum-row">
-        <span>PAYMENT (${esc(r.paymentMethod || 'Cash').toUpperCase()}):</span>
-        <b>LKR ${paid.toFixed(2)}</b>
-      </div>
-      <div class="tr-sum-row">
-        <span>CHANGE / BALANCE:</span>
-        <b>LKR ${bal.toFixed(2)}</b>
-      </div>
+      ${r.paymentMethod === 'Split' ? `
+        <div class="tr-sum-row" style="font-size:11px;">
+          <span>• CASH PORTION:</span>
+          <b>LKR ${Number(r.splitCash || 0).toFixed(2)}</b>
+        </div>
+        <div class="tr-sum-row" style="font-size:11px;">
+          <span>• CARD PORTION:</span>
+          <b>LKR ${Number(r.splitCard || 0).toFixed(2)}</b>
+        </div>
+        <div class="tr-sum-row">
+          <span>CASH TENDERED:</span>
+          <b>LKR ${paid.toFixed(2)}</b>
+        </div>
+        <div class="tr-sum-row">
+          <span>CHANGE / BALANCE:</span>
+          <b>LKR ${bal.toFixed(2)}</b>
+        </div>
+      ` : `
+        <div class="tr-sum-row">
+          <span>PAYMENT (${esc(r.paymentMethod || 'Cash').toUpperCase()}):</span>
+          <b>LKR ${paid.toFixed(2)}</b>
+        </div>
+        <div class="tr-sum-row">
+          <span>CHANGE / BALANCE:</span>
+          <b>LKR ${bal.toFixed(2)}</b>
+        </div>
+      `}
 
       <hr class="tr-divider-dashed">
 
@@ -1787,7 +1809,7 @@ function showPrintServiceCalculator(onAdd) {
         <span style="font-size:26px;">🖨️</span>
         <div>
           <h3 class="modal-title" style="margin:0; font-size:18px;">Print, Copy & Services Calculator</h3>
-          <small class="muted">Instant billing for Photocopy, Printouts, Laminating, Typing & Binding (F2)</small>
+          <small class="muted">Instant billing for Photocopy, Printouts, Laminating, Typing & Binding (Alt+C)</small>
         </div>
       </div>
       <button class="modal-close-x" data-x>✕</button>
@@ -1980,7 +2002,7 @@ function showQuickCustomItemModal(onAdd) {
         <span style="font-size:22px;">⚡</span>
         <div>
           <h3 class="modal-title" style="margin:0;">Quick Custom Item / Open Price</h3>
-          <small class="muted">Add unique keytags, toys, or custom services directly to bill (F3)</small>
+          <small class="muted">Add unique keytags, toys, or custom services directly to bill (Alt+I)</small>
         </div>
       </div>
       <button class="modal-close-x" data-x>✕</button>
@@ -2239,7 +2261,7 @@ function openReturnRefundModal() {
         <span style="font-size:24px;">↩️</span>
         <div>
           <h3 class="modal-title" style="margin:0; font-size:18px;">${t('returnVoucher')}</h3>
-          <small class="muted">Search original bill by invoice number or perform a direct item return (F4)</small>
+          <small class="muted">Search original bill by invoice number or perform a direct item return (Alt+R)</small>
         </div>
       </div>
       <button class="modal-close-x" data-x>✕</button>
@@ -2688,6 +2710,7 @@ async function vPos() {
 
   let selectedTileIndex = 0;
   let isNavigatingGrid = false;
+  let isNavigatingPayMethod = false;
 
   const getSubtotal = () => Math.round(cart.reduce((s, l) => s + l.price * l.qty * (1 - (l.disc || 0) / 100), 0) * 100) / 100;
   const getDiscount = () => Math.max(0, parseFloat($('#posDiscount')?.value) || 0);
@@ -2697,22 +2720,22 @@ async function vPos() {
     <div class="pos-layout">
       <!-- Left: Fast Catalog & Search Section -->
       <section class="pos-catalog">
-        <!-- Search Bar with F1 Focus Hint and Print / Custom Shortcuts -->
+        <!-- Search Bar with Auto-Type Hint and Shortcuts -->
         <div class="pos-search-bar" style="display:flex; gap:10px; align-items:center;">
           <div class="pos-search-bar-wrap" style="flex:1;">
             <svg class="pos-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input id="q" placeholder="${t('searchPos')}" autofocus autocomplete="off">
-            <span class="pos-shortcut-hint-pill">F1</span>
+            <span class="pos-shortcut-hint-pill">Type to search</span>
           </div>
 
-          <button type="button" class="btn btn-primary" id="btnPosCalc" title="Photocopy, Printing, Lamination & Typing Calculator (F2)" style="display:flex; align-items:center; gap:6px; font-weight:800; white-space:nowrap; padding:10px 16px; border-radius:12px; background:linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border:none; box-shadow:0 4px 12px rgba(99,102,241,0.35);">
-            <span>🖨️ Copy / Print (F2)</span>
+          <button type="button" class="btn btn-primary" id="btnPosCalc" title="Photocopy & Printing Calculator (Alt+C)" style="display:flex; align-items:center; gap:6px; font-weight:800; white-space:nowrap; padding:10px 16px; border-radius:12px; background:linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border:none; box-shadow:0 4px 12px rgba(99,102,241,0.35);">
+            <span>🖨️ Copy / Print</span>
           </button>
-          <button type="button" class="btn btn-secondary" id="btnPosCustom" title="Quick Custom Item (F3)" style="display:flex; align-items:center; gap:6px; font-weight:700; white-space:nowrap; padding:10px 14px; border-radius:12px;">
-            <span>⚡ Custom (F3)</span>
+          <button type="button" class="btn btn-secondary" id="btnPosCustom" title="Quick Custom Item (Alt+I)" style="display:flex; align-items:center; gap:6px; font-weight:700; white-space:nowrap; padding:10px 14px; border-radius:12px;">
+            <span>⚡ Custom Item</span>
           </button>
-          <button type="button" class="btn btn-secondary" id="btnPosReturn" title="Customer Return & Refund (F4)" style="display:flex; align-items:center; gap:6px; font-weight:700; white-space:nowrap; padding:10px 14px; border-radius:12px; color:var(--bad); border:1px solid rgba(239,68,68,0.25); background:rgba(239,68,68,0.06);">
-            <span>↩️ Return (F4)</span>
+          <button type="button" class="btn btn-secondary" id="btnPosReturn" title="Customer Return & Refund (Alt+R)" style="display:flex; align-items:center; gap:6px; font-weight:700; white-space:nowrap; padding:10px 14px; border-radius:12px; color:var(--bad); border:1px solid rgba(239,68,68,0.25); background:rgba(239,68,68,0.06);">
+            <span>↩️ Return / Refund</span>
           </button>
         </div>
 
@@ -2733,7 +2756,7 @@ async function vPos() {
 
           <div class="cart-header-actions">
             <!-- Print Receipt ON/OFF Toggle -->
-            <button type="button" class="print-toggle-btn ${posAutoPrint ? 'active' : ''}" id="posPrintToggle" title="Toggle Auto Receipt Printing (F8)">
+            <button type="button" class="print-toggle-btn ${posAutoPrint ? 'active' : ''}" id="posPrintToggle" title="Toggle Auto Receipt Printing (Alt+P)">
               <span>🖨️</span>
               <span id="posPrintToggleText">${posAutoPrint ? t('printOn') : t('printOff')}</span>
             </button>
@@ -2755,10 +2778,10 @@ async function vPos() {
           </div>
 
           <!-- Bill Discount Input Field -->
-          <div class="discount-field-row">
+          <div class="discount-field-row" id="discountFieldRow">
             <div style="display:flex; flex-direction:column;">
               <span style="font-size:13px; font-weight:700;">${t('billDiscount')}</span>
-              <small class="muted" style="font-size:10.5px;">Press Shift to Focus · Enter moves to Cash ↵</small>
+              <small class="muted" style="font-size:10.5px;">Enter moves to Payment Method ↵</small>
             </div>
             <input id="posDiscount" type="number" min="0" step="1" value="0" placeholder="0">
           </div>
@@ -2772,23 +2795,45 @@ async function vPos() {
             <div class="total-banner-amount" id="tot">LKR 0.00</div>
           </div>
 
-          <!-- Payment Method Selector: Cash vs Card -->
+          <!-- Payment Method Selector: Cash vs Card vs Split -->
           <div style="display:flex; flex-direction:column; gap:6px;">
-            <div class="pay-method-toggle">
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <span class="field-label" style="font-size:11px; text-transform:uppercase; font-weight:800;">${t('paymentMethod')}</span>
+              <small class="muted" style="font-size:10.5px;">Use ← / → Arrow keys · Enter to confirm</small>
+            </div>
+            <div class="pay-method-toggle" id="payMethodToggle" tabindex="0">
               <button type="button" class="pay-method-btn active" data-meth="Cash">
                 💵 ${t('cash')}
               </button>
               <button type="button" class="pay-method-btn" data-meth="Card">
                 💳 ${t('card')}
               </button>
+              <button type="button" class="pay-method-btn" data-meth="Split">
+                ⚡ Split
+              </button>
             </div>
           </div>
 
-          <!-- Cash Received Inputs (Only visible in Cash mode) -->
+          <!-- Split Payment Breakdown (Only visible in Split mode) -->
+          <div id="splitFieldsWrap" class="hide" style="display:flex; flex-direction:column; gap:8px; padding:12px; background:var(--bg-card-subtle); border-radius:12px; border:1px solid var(--border-card); margin-bottom:4px;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+              <div>
+                <span class="field-label" style="font-size:11px; font-weight:800; display:block; margin-bottom:4px;">💵 Cash Portion (LKR) *</span>
+                <input id="splitCash" type="number" min="0" step="10" placeholder="0.00" style="width:100%; font-weight:800; height:38px;">
+              </div>
+              <div>
+                <span class="field-label" style="font-size:11px; font-weight:800; display:block; margin-bottom:4px;">💳 Card Portion (LKR)</span>
+                <input id="splitCard" type="text" readonly placeholder="0.00" style="width:100%; font-weight:800; height:38px; background:var(--bg-input); color:var(--brand); border-color:var(--brand);">
+              </div>
+            </div>
+            <small class="muted" style="font-size:11px;">Enter cash portion. Remainder will be charged to card terminal.</small>
+          </div>
+
+          <!-- Cash Received Inputs (Visible in Cash and Split mode) -->
           <div id="cashFieldsWrap" style="display:flex; flex-direction:column; gap:8px;">
             <div class="cash-received-box">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <span class="field-label" style="font-weight:800;">${t('cashReceived')} (LKR) *</span>
+                <span class="field-label" id="cashReceivedLabel" style="font-weight:800;">${t('cashReceived')} (LKR) *</span>
                 <small class="muted" style="font-size:11px;">Press Enter to Complete ↵</small>
               </div>
               <input id="paid" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off">
@@ -2803,7 +2848,7 @@ async function vPos() {
 
             <!-- Dynamic Balance / Change Status -->
             <div id="balanceBadge" class="balance-status-badge exact-or-change">
-              <span>${t('balance')}</span>
+              <span id="balLabel">${t('balance')}</span>
               <b id="bal" style="font-size:16px;">LKR 0.00</b>
             </div>
           </div>
@@ -2813,13 +2858,13 @@ async function vPos() {
             <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             <div>
               <div style="font-weight:800;">${t('cardReady')}</div>
-              <small style="font-size:10.5px; opacity:0.85;">Charge exact total on card terminal and press Complete Sale.</small>
+              <small style="font-size:10.5px; opacity:0.85;">Charge <b id="cardChargeAmount">LKR 0.00</b> on card terminal and press Enter to Complete Sale.</small>
             </div>
           </div>
 
           <!-- Complete Sale Button -->
           <button id="pay" class="btn btn-primary btn-lg btn-block" style="font-size:16px; font-weight:800; padding:14px; border-radius:12px;">
-            ✓ ${t('checkout')} (Enter)
+            ✓ ${t('checkout')}
           </button>
         </div>
       </aside>
@@ -2841,6 +2886,67 @@ async function vPos() {
         el.classList.remove('active-keyboard-tile');
       }
     });
+  };
+
+  const updatePayMethodVisual = () => {
+    const toggleEl = $('#payMethodToggle');
+    if (!toggleEl) return;
+    if (isNavigatingPayMethod) {
+      toggleEl.classList.add('keyboard-nav-active');
+    } else {
+      toggleEl.classList.remove('keyboard-nav-active');
+    }
+    document.querySelectorAll('.pay-method-btn').forEach(btn => {
+      const isCurrent = btn.dataset.meth === posPaymentMethod;
+      btn.classList.toggle('active', isCurrent);
+      if (isNavigatingPayMethod && isCurrent) {
+        btn.classList.add('keyboard-selected');
+        btn.focus();
+      } else {
+        btn.classList.remove('keyboard-selected');
+      }
+    });
+  };
+
+  const setPaymentMethod = (meth) => {
+    posPaymentMethod = meth;
+    document.querySelectorAll('.pay-method-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.meth === meth);
+    });
+
+    const cashWrap = $('#cashFieldsWrap');
+    const cardWrap = $('#cardFieldWrap');
+    const splitWrap = $('#splitFieldsWrap');
+    const label = $('#cashReceivedLabel');
+    const tot = getTotal();
+
+    if (meth === 'Cash') {
+      cashWrap?.classList.remove('hide');
+      cardWrap?.classList.add('hide');
+      splitWrap?.classList.add('hide');
+      if (label) label.textContent = t('cashReceived') + ' (LKR) *';
+      if ($('#paid')) $('#paid').placeholder = tot.toFixed(2);
+    } else if (meth === 'Card') {
+      cashWrap?.classList.add('hide');
+      cardWrap?.classList.remove('hide');
+      splitWrap?.classList.add('hide');
+      if ($('#cardChargeAmount')) $('#cardChargeAmount').textContent = fmt(tot);
+    } else if (meth === 'Split') {
+      cashWrap?.classList.remove('hide');
+      cardWrap?.classList.add('hide');
+      splitWrap?.classList.remove('hide');
+      if (label) label.textContent = 'Cash Tendered for Cash Portion (LKR) *';
+
+      const splitCashInp = $('#splitCash');
+      const splitCardInp = $('#splitCard');
+      if (splitCashInp && (!splitCashInp.value || +splitCashInp.value <= 0)) {
+        splitCashInp.value = Math.round(tot / 2).toFixed(2);
+      }
+      const cPort = parseFloat(splitCashInp?.value) || 0;
+      if (splitCardInp) splitCardInp.value = Math.max(0, tot - cPort).toFixed(2);
+      if ($('#paid')) $('#paid').placeholder = (splitCashInp?.value || '0.00');
+    }
+    calcBal();
   };
 
   const drawGrid = () => {
@@ -2900,6 +3006,7 @@ async function vPos() {
     const tot = getTotal();
     const paidInput = $('#paid');
     const badge = $('#balanceBadge');
+    if (!paidInput || !badge) return;
 
     if (posPaymentMethod === 'Card') {
       paidInput.value = tot.toFixed(2);
@@ -2908,6 +3015,32 @@ async function vPos() {
       return;
     }
 
+    if (posPaymentMethod === 'Split') {
+      const splitCashInp = $('#splitCash');
+      const splitCardDisp = $('#splitCard');
+      let cPort = parseFloat(splitCashInp?.value) || 0;
+      cPort = Math.min(tot, Math.max(0, cPort));
+      const cardPort = Math.max(0, tot - cPort);
+      if (splitCardDisp) splitCardDisp.value = cardPort.toFixed(2);
+
+      const p = parseFloat(paidInput.value);
+      if (isNaN(p) || !paidInput.value.trim()) {
+        $('#bal').textContent = '—';
+        badge.className = 'balance-status-badge exact-or-change';
+        return;
+      }
+      const bal = p - cPort;
+      if (bal < 0) {
+        $('#bal').textContent = t('shortBy') + ' LKR ' + Math.abs(bal).toFixed(2);
+        badge.className = 'balance-status-badge short';
+      } else {
+        $('#bal').textContent = fmt(bal);
+        badge.className = 'balance-status-badge exact-or-change';
+      }
+      return;
+    }
+
+    // Cash mode
     const p = parseFloat(paidInput.value);
     if (isNaN(p) || !paidInput.value.trim()) {
       $('#bal').textContent = '—';
@@ -2956,7 +3089,7 @@ async function vPos() {
       <div class="cart-empty-state">
         <svg viewBox="0 0 24 24" width="48" height="48" stroke="currentColor" fill="none"><circle cx="9" cy="21" r="1"/><circle cx="20" cy="21" r="1"/><path d="M1 1h4l2.7 13.4a2 2 0 0 0 2 1.6h9.7a2 2 0 0 0 2-1.6L23 6H6"/></svg>
         <span style="font-size:14px; font-weight:800;">Bill is currently empty</span>
-        <small style="color:var(--text-muted);">Press F1 to search or use Arrow Keys to select items</small>
+        <small style="color:var(--text-muted);">Type any letter to search · Use Arrow Keys & Enter to add items</small>
       </div>
     `;
 
@@ -3024,31 +3157,32 @@ async function vPos() {
 
   $('#posPrintToggle').onclick = togglePrint;
 
-  // Payment Method Switcher (Cash vs Card)
+  // Payment Method Switcher (Cash vs Card vs Split)
   document.querySelectorAll('.pay-method-btn').forEach(btn => {
     btn.onclick = () => {
-      document.querySelectorAll('.pay-method-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      posPaymentMethod = btn.dataset.meth;
-      if (posPaymentMethod === 'Card') {
-        $('#cashFieldsWrap').classList.add('hide');
-        $('#cardFieldWrap').classList.remove('hide');
-      } else {
-        $('#cashFieldsWrap').classList.remove('hide');
-        $('#cardFieldWrap').classList.add('hide');
-      }
-      calcBal();
+      setPaymentMethod(btn.dataset.meth);
+      isNavigatingPayMethod = false;
+      updatePayMethodVisual();
     };
   });
 
   // Filter numeric cash input
   $('#paid').oninput = e => {
-    // Only allow numbers and decimal point
     e.target.value = e.target.value.replace(/[^0-9.]/g, '');
     const parts = e.target.value.split('.');
     if (parts.length > 2) e.target.value = parts[0] + '.' + parts.slice(1).join('');
     calcBal();
   };
+
+  if ($('#splitCash')) {
+    $('#splitCash').oninput = () => {
+      const tot = getTotal();
+      let cPort = parseFloat($('#splitCash').value) || 0;
+      cPort = Math.min(tot, Math.max(0, cPort));
+      $('#splitCard').value = Math.max(0, tot - cPort).toFixed(2);
+      calcBal();
+    };
+  }
 
   $('#posDiscount').oninput = () => {
     $('#tot').textContent = fmt(getTotal());
@@ -3061,6 +3195,10 @@ async function vPos() {
     const paidInput = $('#paid');
     const rawPaid = paidInput.value.trim();
 
+    let paid = tot;
+    let splitCashVal = 0;
+    let splitCardVal = 0;
+
     if (posPaymentMethod === 'Cash') {
       const p = parseFloat(rawPaid);
       if (!rawPaid || isNaN(p) || p < tot) {
@@ -3072,9 +3210,25 @@ async function vPos() {
         toast(t('cashRequiredAlert') + ` (LKR ${tot.toFixed(2)})`, 1);
         return;
       }
+      paid = p;
+    } else if (posPaymentMethod === 'Split') {
+      splitCashVal = Math.max(0, parseFloat($('#splitCash')?.value) || 0);
+      splitCardVal = Math.max(0, tot - splitCashVal);
+      const p = parseFloat(rawPaid);
+      if (!rawPaid || isNaN(p) || p < splitCashVal) {
+        paidInput.classList.remove('input-shake-error');
+        void paidInput.offsetWidth;
+        paidInput.classList.add('input-shake-error');
+        paidInput.focus();
+        paidInput.select();
+        toast(`Cash received must be at least the cash portion (LKR ${splitCashVal.toFixed(2)})`, 1);
+        return;
+      }
+      paid = p;
+    } else {
+      paid = tot;
     }
 
-    const paid = posPaymentMethod === 'Card' ? tot : parseFloat(rawPaid);
     const disc = getDiscount();
 
     try {
@@ -3086,9 +3240,11 @@ async function vPos() {
           customPrice: l.customPrice,
           customName: l.customName
         })),
-        paid: isNaN(paid) ? tot : paid,
+        paid,
         paymentMethod: posPaymentMethod,
-        billDiscount: disc
+        billDiscount: disc,
+        splitCash: splitCashVal,
+        splitCard: splitCardVal
       });
       cart = [];
       receipt(r);
@@ -3173,105 +3329,253 @@ async function vPos() {
   });
 
   $('#qcExact').onclick = () => {
-    $('#paid').value = getTotal().toFixed(2);
+    if (posPaymentMethod === 'Split') {
+      $('#paid').value = ($('#splitCash')?.value || '0.00');
+    } else {
+      $('#paid').value = getTotal().toFixed(2);
+    }
     calcBal();
   };
 
-  // Keyboard Navigation Handler
+  // Rapid Keyboard Navigation Workflow (Zero F-Keys Required)
   window.onkeydown = e => {
     if (tab !== 'pos' || $('.modal-backdrop')) return;
 
-    // F1: Focus Search Input
-    if (e.key === 'F1') {
-      e.preventDefault();
-      const qEl = $('#q');
-      if (qEl) {
-        qEl.focus();
-        qEl.select();
-        isNavigatingGrid = false;
-        updateTileFocus();
+    const activeEl = document.activeElement;
+    const isOtherInput = activeEl && ['INPUT', 'TEXTAREA'].includes(activeEl.tagName) && activeEl.id !== 'q';
+
+    // 1. NON-F SHORTCUTS (Alt Key Combos for tools)
+    if (e.altKey && !e.ctrlKey && !e.metaKey) {
+      const k = e.key.toLowerCase();
+      if (k === 'c') {
+        e.preventDefault();
+        showPrintServiceCalculator(customLine => add(null, customLine));
+        return;
       }
-      return;
+      if (k === 'i' || k === 'k') {
+        e.preventDefault();
+        showQuickCustomItemModal(customLine => add(null, customLine));
+        return;
+      }
+      if (k === 'r') {
+        e.preventDefault();
+        openReturnRefundModal();
+        return;
+      }
+      if (k === 'p') {
+        e.preventDefault();
+        togglePrint();
+        return;
+      }
     }
 
-    // F2: Copy & Print Calculator Modal
+    // Fallback F-keys for users whose hardware supports them
+    if (e.key === 'F1') {
+      e.preventDefault();
+      $('#q')?.focus();
+      $('#q')?.select();
+      isNavigatingGrid = false;
+      isNavigatingPayMethod = false;
+      updateTileFocus();
+      updatePayMethodVisual();
+      return;
+    }
     if (e.key === 'F2') {
       e.preventDefault();
       showPrintServiceCalculator(customLine => add(null, customLine));
       return;
     }
-
-    // F3: Quick Custom Item Modal
     if (e.key === 'F3') {
       e.preventDefault();
       showQuickCustomItemModal(customLine => add(null, customLine));
       return;
     }
-
-    // F4: Return Item / Customer Refund Modal
     if (e.key === 'F4') {
       e.preventDefault();
       openReturnRefundModal();
       return;
     }
-
-    // F8: Toggle Print
     if (e.key === 'F8') {
       e.preventDefault();
       togglePrint();
       return;
     }
 
-    // Shift Key: Advance from item selection directly to Bill Discount
-    if (e.key === 'Shift') {
-      if (cart.length > 0) {
-        e.preventDefault();
-        isNavigatingGrid = false;
-        updateTileFocus();
-        const discEl = $('#posDiscount');
-        if (discEl) {
-          discEl.focus();
-          discEl.select();
+    // 2. TAB KEY: Advance from search/grid to Bill Discount
+    if (e.key === 'Tab' && !e.shiftKey) {
+      if (!isOtherInput) {
+        if (cart.length > 0) {
+          e.preventDefault();
+          isNavigatingGrid = false;
+          isNavigatingPayMethod = false;
+          updateTileFocus();
+          updatePayMethodVisual();
+          const discEl = $('#posDiscount');
+          if (discEl) {
+            discEl.focus();
+            discEl.select();
+          }
+          return;
         }
-      } else {
-        toast(t('cartEmpty'), 1);
       }
-      return;
     }
 
-    // If focus is in Cash Received: Enter attempts checkout
-    if (document.activeElement === $('#paid')) {
+    // 3. IF FOCUS IS IN CASH RECEIVED (#paid):
+    if (activeEl === $('#paid')) {
       if (e.key === 'Enter') {
         e.preventDefault();
+        if (!$('#paid').value.trim()) {
+          if (posPaymentMethod === 'Split') {
+            $('#paid').value = ($('#splitCash')?.value || getTotal().toFixed(2));
+          } else {
+            $('#paid').value = getTotal().toFixed(2);
+          }
+          calcBal();
+        }
         checkout();
         return;
       }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        if (posPaymentMethod === 'Split') {
+          $('#splitCash')?.focus();
+          $('#splitCash')?.select();
+        } else {
+          isNavigatingPayMethod = true;
+          $('#payMethodToggle')?.focus();
+          updatePayMethodVisual();
+        }
+        return;
+      }
+      return; // allow numeric typing in #paid
     }
 
-    // If focus is in Bill Discount: Enter moves to Cash Received
-    if (document.activeElement === $('#posDiscount')) {
+    // 4. IF FOCUS IS IN SPLIT CASH PORTION (#splitCash):
+    if (activeEl === $('#splitCash')) {
       if (e.key === 'Enter') {
         e.preventDefault();
-        if (posPaymentMethod === 'Card') {
-          checkout();
-        } else {
+        const paidEl = $('#paid');
+        if (paidEl) {
+          if (!paidEl.value.trim()) {
+            paidEl.value = $('#splitCash').value || '0.00';
+          }
+          paidEl.focus();
+          paidEl.select();
+        }
+        return;
+      }
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        isNavigatingPayMethod = true;
+        $('#payMethodToggle')?.focus();
+        updatePayMethodVisual();
+        return;
+      }
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        $('#paid')?.focus();
+        $('#paid')?.select();
+        return;
+      }
+      return; // allow numeric typing in #splitCash
+    }
+
+    // 5. IF FOCUS IS IN BILL DISCOUNT (#posDiscount):
+    if (activeEl === $('#posDiscount')) {
+      if (e.key === 'Enter' || e.key === 'ArrowDown') {
+        e.preventDefault();
+        isNavigatingPayMethod = true;
+        isNavigatingGrid = false;
+        $('#payMethodToggle')?.focus();
+        updatePayMethodVisual();
+        return;
+      }
+      return; // allow numeric typing in #posDiscount
+    }
+
+    // 6. IF IN PAYMENT METHOD SELECTION (isNavigatingPayMethod or activeEl is payment button/toggle):
+    if (isNavigatingPayMethod || activeEl === $('#payMethodToggle') || activeEl?.classList.contains('pay-method-btn')) {
+      const payMethods = ['Cash', 'Card', 'Split'];
+
+      if (e.key === 'ArrowLeft') {
+        e.preventDefault();
+        let idx = payMethods.indexOf(posPaymentMethod);
+        idx = (idx - 1 + payMethods.length) % payMethods.length;
+        setPaymentMethod(payMethods[idx]);
+        isNavigatingPayMethod = true;
+        updatePayMethodVisual();
+        return;
+      }
+
+      if (e.key === 'ArrowRight') {
+        e.preventDefault();
+        let idx = payMethods.indexOf(posPaymentMethod);
+        idx = (idx + 1) % payMethods.length;
+        setPaymentMethod(payMethods[idx]);
+        isNavigatingPayMethod = true;
+        updatePayMethodVisual();
+        return;
+      }
+
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        isNavigatingPayMethod = false;
+        updatePayMethodVisual();
+
+        if (posPaymentMethod === 'Cash') {
           const paidEl = $('#paid');
           if (paidEl) {
             paidEl.focus();
             paidEl.select();
           }
+        } else if (posPaymentMethod === 'Card') {
+          checkout();
+        } else if (posPaymentMethod === 'Split') {
+          const spCashEl = $('#splitCash');
+          if (spCashEl) {
+            spCashEl.focus();
+            spCashEl.select();
+          }
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowUp') {
+        e.preventDefault();
+        isNavigatingPayMethod = false;
+        updatePayMethodVisual();
+        const discEl = $('#posDiscount');
+        if (discEl) {
+          discEl.focus();
+          discEl.select();
+        }
+        return;
+      }
+
+      if (e.key === 'ArrowDown') {
+        e.preventDefault();
+        isNavigatingPayMethod = false;
+        updatePayMethodVisual();
+        if (posPaymentMethod === 'Cash') {
+          $('#paid')?.focus();
+          $('#paid')?.select();
+        } else if (posPaymentMethod === 'Split') {
+          $('#splitCash')?.focus();
+          $('#splitCash')?.select();
+        } else {
+          checkout();
         }
         return;
       }
     }
 
-    // If focus is in Search Box:
-    if (document.activeElement === $('#q')) {
+    // 7. IF FOCUS IS IN SEARCH BOX (#q):
+    if (activeEl === $('#q')) {
       const qVal = $('#q').value.trim();
 
       if (e.key === 'Enter') {
         e.preventDefault();
-        // 1. Exact barcode match
+        // Exact barcode match
         const exactBarcode = items.find(it => it.Barcode && it.Barcode === qVal);
         if (exactBarcode) {
           add(exactBarcode.Id);
@@ -3280,7 +3584,7 @@ async function vPos() {
           return;
         }
 
-        // 2. First matching item
+        // First matching item
         const visible = getVisibleItems();
         if (qVal && visible.length) {
           add(visible[0].Id);
@@ -3289,9 +3593,13 @@ async function vPos() {
           return;
         }
 
-        // 3. Search is empty -> Advance directly to Bill Discount
+        // Empty search -> Advance directly to Bill Discount
         if (!qVal) {
           if (cart.length > 0) {
+            isNavigatingGrid = false;
+            isNavigatingPayMethod = false;
+            updateTileFocus();
+            updatePayMethodVisual();
             const discEl = $('#posDiscount');
             if (discEl) {
               discEl.focus();
@@ -3311,15 +3619,17 @@ async function vPos() {
           e.preventDefault();
           $('#q').blur();
           isNavigatingGrid = true;
+          isNavigatingPayMethod = false;
           selectedTileIndex = 0;
           updateTileFocus();
+          updatePayMethodVisual();
         }
         return;
       }
     }
 
-    // If navigating products grid with Arrow Keys:
-    if (isNavigatingGrid && !['INPUT', 'SELECT', 'TEXTAREA'].includes(document.activeElement.tagName)) {
+    // 8. IF NAVIGATING PRODUCTS GRID WITH ARROW KEYS:
+    if (isNavigatingGrid && !isOtherInput) {
       const visible = getVisibleItems();
       if (!visible.length) return;
 
@@ -3373,6 +3683,36 @@ async function vPos() {
         if (qEl) qEl.focus();
         updateTileFocus();
         return;
+      }
+    }
+
+    // 9. GLOBAL AUTO-TYPE TO SEARCH:
+    // Any letter/number key typed outside other inputs instantly focuses #q and searches!
+    if (!isOtherInput && !e.ctrlKey && !e.altKey && !e.metaKey) {
+      if (e.key.length === 1) { // Single printable character
+        const qEl = $('#q');
+        if (qEl && activeEl !== qEl) {
+          e.preventDefault();
+          isNavigatingGrid = false;
+          isNavigatingPayMethod = false;
+          updateTileFocus();
+          updatePayMethodVisual();
+          qEl.focus();
+          qEl.value = qEl.value + e.key;
+          qEl.dispatchEvent(new Event('input'));
+        }
+      } else if (e.key === 'Backspace') {
+        const qEl = $('#q');
+        if (qEl && activeEl !== qEl) {
+          e.preventDefault();
+          isNavigatingGrid = false;
+          isNavigatingPayMethod = false;
+          updateTileFocus();
+          updatePayMethodVisual();
+          qEl.focus();
+          qEl.value = qEl.value.slice(0, -1);
+          qEl.dispatchEvent(new Event('input'));
+        }
       }
     }
   };
@@ -6368,18 +6708,48 @@ async function vHelp() {
           <div style="display:grid; grid-template-columns:repeat(auto-fill, minmax(240px, 1fr)); gap:12px;">
             <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'සෙවීම සහ බාර්කෝඩ්' : 'Search / Barcode'}</b>
-                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">F1</span>
+                <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'සෙවීම සහ බාර්කෝඩ්' : 'Auto Search / Barcode'}</b>
+                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">Any Letter / A-Z</span>
               </div>
               <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
-                ${isSi ? 'සෙවුම් තීරුව සක්‍රිය කරයි. බාර්කෝඩ් ස්කෑනරයෙන් කෙලින්ම ස්කෑන් කර බිලට ඇතුළත් කළ හැක.' : 'Focuses search bar. Scan ISBN or barcode directly to add items.'}
+                ${isSi ? 'ඕනෑම අකුරක් ඔබන්න — සෙවුම් තීරුව ස්වයංක්‍රීයව ක්‍රියාත්මක වී භාණ්ඩ පෙරා පෙන්වයි. බාර්කෝඩ් ස්කෑනරයද ක්‍රියා කරයි.' : 'Press any letter/number key — instantly searches and filters catalog without touching mouse or F-keys.'}
+              </small>
+            </div>
+
+            <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'භාණ්ඩ තෝරා බිලට එක්කිරීම' : 'Select Product & Add'}</b>
+                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">Arrow Keys + Enter</span>
+              </div>
+              <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
+                ${isSi ? 'ඊතල යතුරු (↑ ↓ ← →) මගින් භාණ්ඩය තෝරා Enter ඔබා බිලට ඇතුළත් කරන්න.' : 'Use Arrow Keys to highlight product in grid, then press Enter to add directly to cart.'}
+              </small>
+            </div>
+
+            <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'වට්ටම සහ ගෙවීම් තේරීම' : 'Discount & Payment Choice'}</b>
+                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">Enter / Tab</span>
+              </div>
+              <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
+                ${isSi ? 'Enter හෝ Tab ඔබා වට්ටමට යන්න ➔ Enter ඔබා ගෙවීම් ක්‍රමය (Cash, Card, Split) තෝරන්න.' : 'Press Enter on empty search (or Tab) for discount ➔ Enter to advance to payment method.'}
+              </small>
+            </div>
+
+            <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'ගෙවීම් ක්‍රමය (Cash/Card/Split)' : 'Choose Cash, Card, Split'}</b>
+                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">← / → Arrow Keys</span>
+              </div>
+              <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
+                ${isSi ? 'වම්/දකුණු ඊතල වලින් Cash, Card, Split මාරු කරන්න. Enter ඔබා ලැබුණු මුදලට ගොස් බිල සම්පූර්ණ කරන්න.' : 'Use Left/Right arrows to toggle Cash, Card, Split. Press Enter to tender cash and finish sale.'}
               </small>
             </div>
 
             <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'ෆොටෝකොපි / මුද්‍රණ ගණකය' : 'Copy / Print Calc'}</b>
-                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">F2</span>
+                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">Alt + C</span>
               </div>
               <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
                 ${isSi ? 'ෆොටෝකොපි, පරිගණක මුද්‍රණ, ලැමිනේට්, ටයිපින් සහ බයින්ඩින් ක්ෂණික ගණකය විවෘත වේ.' : 'Opens speed calculator for Photocopy, Print, Lamination, Typing & Binding.'}
@@ -6389,7 +6759,7 @@ async function vHelp() {
             <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'ක්ෂණික භාණ්ඩයක්' : 'Quick Custom Item'}</b>
-                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">F3</span>
+                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">Alt + I</span>
               </div>
               <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
                 ${isSi ? 'පද්ධතියේ ලියාපදිංචි නොවූ සෙල්ලම් බඩු, කීටැග් හෝ සේවා ක්ෂණික මිලකට බිල් කරයි.' : 'Instantly bill uncatalogued toys, novelty keytags or custom repair jobs.'}
@@ -6399,7 +6769,7 @@ async function vHelp() {
             <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'භාණ්ඩ ආපසු භාරගැනීම' : 'Return & Refund'}</b>
-                <span class="pill warn" style="font-weight:900; font-family:monospace; font-size:12px;">F4</span>
+                <span class="pill warn" style="font-weight:900; font-family:monospace; font-size:12px;">Alt + R</span>
               </div>
               <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
                 ${isSi ? 'පාරිභෝගික භාණ්ඩ ආපසු භාරගැනීම, බිල්පතෙන් භාණ්ඩ ආපසු ගැනීම සහ මුදල් ආපසු ගෙවීම.' : 'Return customer items by invoice or direct return, restock items & issue refunds.'}
@@ -6409,30 +6779,10 @@ async function vHelp() {
             <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
                 <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'රිසිට්පත් මුද්‍රණය' : 'Auto Print Toggle'}</b>
-                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">F8</span>
+                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">Alt + P</span>
               </div>
               <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
                 ${isSi ? 'බිල අවසන් වූ විට ස්වයංක්‍රීයව රිසිට්පත මුද්‍රණය සක්‍රිය (ON) හෝ අක්‍රිය (OFF) කරයි.' : 'Toggle thermal receipt auto-printing ON or OFF directly from register.'}
-              </small>
-            </div>
-
-            <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'භාණ්ඩ තෝරාගැනීම' : 'Catalog Navigation'}</b>
-                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">↑ ↓ ← →</span>
-              </div>
-              <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
-                ${isSi ? 'ඊතල යතුරු මගින් භාණ්ඩ කාඩ්පත් තෝරා Enter ඔබා බිලට ඇතුළත් කරන්න.' : 'Navigate product tiles with arrow keys and press Enter to add to cart.'}
-              </small>
-            </div>
-
-            <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
-              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
-                <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'වට්ටම සහ ගෙවීම' : 'Discount & Checkout'}</b>
-                <span class="pill info" style="font-weight:900; font-family:monospace; font-size:12px;">Shift ➔ Enter</span>
-              </div>
-              <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
-                ${isSi ? 'Shift ඔබා වට්ටම ලියන්න ➔ Enter ඔබා ලැබුණු මුදල ලියා Enter ඔබා බිල අවසන් කරන්න.' : 'Shift moves to Bill Discount ➔ Enter moves to Cash Received ➔ Enter completes checkout.'}
               </small>
             </div>
           </div>
@@ -6449,35 +6799,35 @@ async function vHelp() {
           <div style="font-size:13.5px; line-height:1.65; color:var(--text-dim); display:flex; flex-direction:column; gap:10px;">
             <p style="margin:0;">
               ${isSi 
-                ? '<b>බාර්කෝඩ් හෝ ISBN ස්කෑන් කිරීම:</b> ස්කෑනරය මගින් ඕනෑම පොතක ඇති 13-digit ISBN බාර්කෝඩ් එකක් හෝ ඇසුරුමක ඇති බාර්කෝඩ් එකක් ස්කෑන් කළ විට, එය ක්ෂණිකව බිලට එකතු වේ. තනි පෑන්, පැන්සල් හෝ යතුරු රඳවනයක් වැනි බාර්කෝඩ් නොමැති භාණ්ඩ සඳහා නමේ කොටසක් (උදා: Atlas Blue හෝ Keytag) සෙවුම් තීරුවේ ටයිප් කරන්න.' 
-                : '<b>Scanning Barcodes & ISBNs:</b> Scan any book ISBN or stationery package with your barcode scanner (shortcut F1). The item is instantly verified and added to the bill. For unboxed pens or keytags, type the item name (e.g. "Atlas Blue" or "Keytag") in the search box.'}
+                ? '<b>බාර්කෝඩ් හෝ ISBN ස්කෑන් කිරීම:</b> ස්කෑනරය මගින් ඕනෑම පොතක ඇති 13-digit ISBN බාර්කෝඩ් එකක් හෝ ඇසුරුමක ඇති බාර්කෝඩ් එකක් ස්කෑන් කළ විට, එය ක්ෂණිකව බිලට එකතු වේ. තනි පෑන්, පැන්සල් හෝ යතුරු රඳවනයක් වැනි බාර්කෝඩ් නොමැති භාණ්ඩ සඳහා නමේ ඕනෑම අකුරක් යතුරුපුවරුවෙන් ටයිප් කරන්න.' 
+                : '<b>Scanning Barcodes & ISBNs:</b> Scan any book ISBN or stationery package with your barcode scanner. The item is instantly verified and added to the bill. For unboxed pens or keytags, type any letter directly on your keyboard to search.'}
             </p>
             <p style="margin:0;">
               ${isSi 
-                ? '<b>ප්‍රමාණය වෙනස් කිරීම සහ වට්ටම්:</b> බිලෙහි ඇති ඕනෑම භාණ්ඩයක ප්‍රමාණය + සහ - බොත්තම් වලින් හෝ අගය කෙලින්ම ලියා වෙනස් කළ හැක. පාරිභෝගිකයාට එක් එක් භාණ්ඩය සඳහා ප්‍රතිශත (Disc %) වට්ටමක් හෝ සම්පූර්ණ බිලටම රුපියල් (LKR) වට්ටමක් (Shift යතුර) ලබා දිය හැක.' 
-                : '<b>Adjusting Quantities & Discounts:</b> Adjust line quantities using + / - steppers or direct number input. You can grant a line item percentage discount (Disc %) or an overall net Bill Discount in LKR by pressing Shift.'}
+                ? '<b>ප්‍රමාණය වෙනස් කිරීම සහ වට්ටම්:</b> බිලෙහි ඇති ඕනෑම භාණ්ඩයක ප්‍රමාණය + සහ - බොත්තම් වලින් හෝ අගය කෙලින්ම ලියා වෙනස් කළ හැක. පාරිභෝගිකයාට එක් එක් භාණ්ඩය සඳහා ප්‍රතිශත (Disc %) වට්ටමක් හෝ සම්පූර්ණ බිලටම රුපියල් (LKR) වට්ටමක් (Enter/Tab යතුර) ලබා දිය හැක.' 
+                : '<b>Adjusting Quantities & Discounts:</b> Adjust line quantities using + / - steppers or direct number input. You can grant a line item percentage discount (Disc %) or an overall net Bill Discount in LKR by pressing Enter or Tab.'}
             </p>
             <p style="margin:0;">
               ${isSi 
-                ? '<b>ගෙවීම් ක්‍රමය (Cash vs Card):</b> මුදල් ගෙවීමේදී ලැබුණු මුදල ඇතුළත් කළ විට ඉතිරිය (Balance / Change) ස්වයංක්‍රීයව ගණනය වේ. කාඩ්පත් ගෙවීම් සඳහා "Card" බොත්තම තෝරා අයකැමි යන්ත්‍රයෙන් කාඩ්පත ස්වයිප් කර බිල අවසන් කරන්න.' 
-                : '<b>Payment Modes:</b> In Cash mode, type the received cash and the system calculates customer balance change. In Card mode, the exact payable total is matched for your POS credit/debit card swipe machine.'}
+                ? '<b>ගෙවීම් ක්‍රමය (Cash, Card, Split):</b> වම්/දකුණු ඊතල වලින් Cash, Card හෝ Split තෝරන්න. මුදල් ගෙවීමේදී ලැබුණු මුදල ඇතුළත් කළ විට ඉතිරිය ස්වයංක්‍රීයව ගණනය වේ. කාඩ්පත් හෝ Split ගෙවීම් සඳහා නිවැරදි මුදල කාඩ්පත් යන්ත්‍රයෙන් අය කරන්න.' 
+                : '<b>Payment Modes (Cash, Card, Split):</b> Use Left/Right Arrow keys to select Cash, Card, or Split. In Cash mode, the system calculates change. In Card or Split mode, verify the charge on your card terminal.'}
             </p>
           </div>
         </div>
 
-        <!-- 3. Using the Print & Copy Speed Calculator (F2) -->
+        <!-- 3. Using the Print & Copy Speed Calculator -->
         <div class="table-card" style="padding:22px;">
           <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
             <span style="font-size:22px;">🖨️</span>
             <h3 style="margin:0; font-size:18px; font-weight:800;">
-              ${isSi ? '2. ෆොටෝකොපි, මුද්‍රණ, ලැමිනේට් සහ ටයිපින් සේවා ගණකය (F2)' : '2. Print, Copy, Laminating & Typing Speed Calculator (F2)'}
+              ${isSi ? '2. ෆොටෝකොපි, මුද්‍රණ, ලැමිනේට් සහ ටයිපින් සේවා ගණකය' : '2. Print, Copy, Laminating & Typing Speed Calculator'}
             </h3>
           </div>
           <div style="font-size:13.5px; line-height:1.65; color:var(--text-dim); display:flex; flex-direction:column; gap:12px;">
             <p style="margin:0;">
               ${isSi 
-                ? 'පාරිභෝගිකයෙකු පිටු 45ක දෙපැත්ත ෆොටෝකොපි හෝ කලර් පිටපත් ලබා ගැනීමට පැමිණි විට හස්තීයව ගණනය කිරීම අවශ්‍ය නොවේ. <b>F2</b> ඔබන්න හෝ POS තිරයේ ඉහළ ඇති <b>"🖨️ Copy / Print (F2)"</b> ඔබන්න.' 
-                : 'When a customer brings 45 pages of double-sided photocopy or color printouts, do not calculate manually. Simply press <b>F2</b> or click <b>"🖨️ Copy / Print (F2)"</b> on the POS header.'}
+                ? 'පාරිභෝගිකයෙකු පිටු 45ක දෙපැත්ත ෆොටෝකොපි හෝ කලර් පිටපත් ලබා ගැනීමට පැමිණි විට හස්තීයව ගණනය කිරීම අවශ්‍ය නොවේ. <b>Alt+C</b> ඔබන්න හෝ POS තිරයේ ඉහළ ඇති <b>"🖨️ Copy / Print"</b> ඔබන්න.' 
+                : 'When a customer brings 45 pages of double-sided photocopy or color printouts, do not calculate manually. Simply press <b>Alt+C</b> or click <b>"🖨️ Copy / Print"</b> on the POS header.'}
             </p>
             <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(230px, 1fr)); gap:10px;">
               <div style="background:var(--bg-input); padding:12px; border-radius:10px; border:1px solid var(--border);">
@@ -6513,19 +6863,19 @@ async function vHelp() {
           </div>
         </div>
 
-        <!-- 4. Quick Custom Items & Barcode Stickers (F3) -->
+        <!-- 4. Quick Custom Items & Barcode Stickers -->
         <div class="table-card" style="padding:22px;">
           <div style="display:flex; align-items:center; gap:10px; margin-bottom:14px;">
             <span style="font-size:22px;">🏷️</span>
             <h3 style="margin:0; font-size:18px; font-weight:800;">
-              ${isSi ? '3. ලියාපදිංචි නොවූ භාණ්ඩ (F3) සහ බාර්කෝඩ් ස්ටිකර් මුද්‍රණය' : '3. Quick Custom Items (F3) & Barcode Label Stickers'}
+              ${isSi ? '3. ලියාපදිංචි නොවූ භාණ්ඩ (Alt+I) සහ බාර්කෝඩ් ස්ටිකර් මුද්‍රණය' : '3. Quick Custom Items (Alt+I) & Barcode Label Stickers'}
             </h3>
           </div>
           <div style="font-size:13.5px; line-height:1.65; color:var(--text-dim); display:flex; flex-direction:column; gap:10px;">
             <p style="margin:0;">
               ${isSi 
-                ? '<b>ලියාපදිංචි නොවූ භාණ්ඩ විකිණීම (F3):</b> අලුතින් ගෙනා විශේෂිත යතුරු රඳවනයක් හෝ සෙල්ලම් බඩුවක් තවම ඉන්වෙන්ටරියට ඇතුළත් කර නොමැති නම්, <b>F3</b> ඔබා නම, මිල සහ ප්‍රමාණය ලියා එකවර බිලට එක්කරන්න.' 
-                : '<b>Open Price / Unlisted Items (F3):</b> When selling a specialty keytag, toy, or custom repair job that isn\'t pre-registered in inventory, press <b>F3</b> to specify the description, price, and quantity directly.'}
+                ? '<b>ලියාපදිංචි නොවූ භාණ්ඩ විකිණීම (Alt+I):</b> අලුතින් ගෙනා විශේෂිත යතුරු රඳවනයක් හෝ සෙල්ලම් බඩුවක් තවම ඉන්වෙන්ටරියට ඇතුළත් කර නොමැති නම්, <b>Alt+I</b> ඔබන්න හෝ POS තිරයේ ඉහළ ඇති බොත්තම ඔබා නම, මිල සහ ප්‍රමාණය ලියා එකවර බිලට එක්කරන්න.' 
+                : '<b>Open Price / Unlisted Items (Alt+I):</b> When selling a specialty keytag, toy, or custom repair job that isn\'t pre-registered in inventory, press <b>Alt+I</b> or click the header button to specify description, price, and quantity directly.'}
             </p>
             <p style="margin:0;">
               ${isSi 
