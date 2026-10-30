@@ -23,7 +23,30 @@ const D = {
   receipts: ['Receipt & Print', 'රිසිට්පත් සහ මුද්‍රණය'],
   users: ['Users', 'පරිශීලකයින්'],
   subs: ['Subscription', 'දායකත්වය'],
+  backup: ['Database Backup', 'දත්ත සමුදාය බැකප්'],
   help: ['User Guide & Help', 'භාවිතා කිරීමේ උපදෙස්'],
+
+  // Backup & Data Protection
+  backupTitle: ['Database Backup & Data Protection', 'දත්ත සමුදාය බැකප් සහ දත්ත ආරක්ෂණය'],
+  backupSub: ['Automated hourly database backups saved to your chosen drive / folder · 1 file per day refreshed every hour', 'තෝරාගත් මාර්ගයට සෑම පැයකටම ස්වයංක්‍රීයව දත්ත සුරැකේ · දිනකට එක් ගොනුවක් බැගින් සෑම පැයකදීම යාවත්කාලීන වේ'],
+  autoBackupActive: ['Hourly Backup Active', 'පැයක බැකප් සක්‍රියයි'],
+  everyHour: ['Every 1 Hour', 'සෑම පැය 1කට වරක්'],
+  retentionDaily: ['1 File Per Day', 'දිනකට එක් ගොනුවක්'],
+  retentionSub: ['Overwritten hourly with fresh data', 'සෑම පැයකදීම නවතම දත්ත වලින් යාවත්කාලීන වේ'],
+  lastBackup: ['Last Backup Time', 'අවසාන බැකප් කළ වේලාව'],
+  backupPathLabel: ['Backup Storage Directory (Selected Path)', 'බැකප් ගබඩා කරන ෆෝල්ඩරය'],
+  browseFolder: ['📁 Browse Folder…', '📁 ෆෝල්ඩරය තෝරන්න…'],
+  savePath: ['Save Path', 'සුරකින්න'],
+  openFolder: ['📂 Open Folder', '📂 ෆෝල්ඩරය විවෘත කරන්න'],
+  backupNow: ['⚡ Backup Now', '⚡ දැන් බැකප් කරන්න'],
+  backingUp: ['Backing up database…', 'දත්ත බැකප් වෙමින් පවතී…'],
+  backupSuccess: ['Database backup completed successfully!', 'දත්ත සමුදාය සාර්ථකව බැකප් කරන ලදී!'],
+  todayBackupCard: ["Today's Active Daily Backup", 'අද දින ක්‍රියාකාරී බැකප් ගොනුව'],
+  historyBackups: ['Backup Archives & Daily Snapshots', 'පෙර දිනවල බැකප් ගොනු ලේඛනාගාරය'],
+  fileName: ['File Name', 'ගොනු නම'],
+  fileSize: ['File Size', 'ගොනු ප්‍රමාණය'],
+  lastUpdated: ['Last Updated', 'අවසන් වරට යාවත්කාලීන කළ වේලාව'],
+  fileType: ['Format', 'ආකෘතිය'],
 
   // Receipt & Print Settings
   receiptSettings: ['Receipt Customization & Thermal Print', 'රිසිට්පත් සැකසුම් සහ මුද්‍රණය'],
@@ -383,6 +406,7 @@ const ICON = {
   receipts: '<polyline points="6 9 6 2 18 2 18 9"/><path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/><rect x="6" y="14" width="12" height="8"/>',
   users: '<path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.9M16 3.1a4 4 0 0 1 0 7.8"/>',
   subs: '<rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/>',
+  backup: '<ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/>',
   help: '<circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/>'
 };
 
@@ -778,6 +802,7 @@ const SYSTEM_MODULES = [
   { key: 'grn', name: 'Goods Received Note (GRN)', desc: 'Supplier stock entry, batch tracking & purchase costs', icon: ICON.grn },
   { key: 'reports', name: 'Financial & Sales Reports', desc: 'Daily revenue, item-wise sales and cashier performance', icon: ICON.reports },
   { key: 'receipts', name: 'Receipt Settings', desc: 'Thermal printer 58mm/80mm format, header & footer design', icon: ICON.receipts },
+  { key: 'backup', name: 'Database Backup', desc: 'Hourly automated backups, custom storage path & manual snapshot', icon: ICON.backup },
   { key: 'help', name: 'User Guide & Help', desc: 'Step-by-step cashier tutorials, shortcuts & operations guide', icon: ICON.help }
 ];
 
@@ -789,13 +814,14 @@ function userHasPerm(k) {
   if (me.role === A) return true;
   // User accounts management & subscription settings are restricted to Super Admin only by default
   if (k === 'users' || k === 'subs') return me.role === A;
+  if (k === 'backup') return me.role === A || me.role === M;
 
   if (me.permissions) {
     const list = me.permissions.split(',').map(s => s.trim().toLowerCase());
     return list.includes(k.toLowerCase());
   }
   // Role defaults when no custom permissions are set
-  if (me.role === M) return ['dashboard', 'pos', 'items', 'grn', 'reports', 'receipts'].includes(k);
+  if (me.role === M) return ['dashboard', 'pos', 'items', 'grn', 'reports', 'receipts', 'backup'].includes(k);
   if (me.role === C) return ['pos', 'dashboard'].includes(k);
   return false;
 }
@@ -808,6 +834,7 @@ const TABS = {
   grn: [vGrn, null],
   reports: [vReports, null],
   receipts: [vReceiptSettings, null],
+  backup: [vBackup, null],
   users: [vUsers, null],
   subs: [vSubs, null],
   help: [vHelp, null]
@@ -2972,6 +2999,299 @@ async function vReceiptSettings() {
 }
 
 /* ==========================================================================
+   VIEW: AUTOMATED HOURLY DATABASE BACKUP & DATA PROTECTION
+   ========================================================================== */
+async function vBackup() {
+  const info = await call('backup:getInfo');
+
+  function fmtBytes(bytes) {
+    if (!bytes || bytes === 0) return '0 B';
+    const k = 1024;
+    const sizes = ['B', 'KB', 'MB', 'GB'];
+    const i = Math.floor(Math.log(bytes) / Math.log(k));
+    return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+  }
+
+  function fmtTime(isoStr) {
+    if (!isoStr) return 'Never executed';
+    const d = new Date(isoStr);
+    if (isNaN(d.getTime())) return isoStr;
+    const diffMin = Math.round((Date.now() - d.getTime()) / 60000);
+    let rel = '';
+    if (diffMin < 1) rel = 'Just now';
+    else if (diffMin < 60) rel = `${diffMin}m ago`;
+    else {
+      const h = Math.floor(diffMin / 60);
+      const m = diffMin % 60;
+      rel = `${h}h ${m}m ago`;
+    }
+    return `${d.toLocaleDateString()} ${d.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' })} (${rel})`;
+  }
+
+  const hasToday = Boolean(info.todayFile);
+
+  $('#view').innerHTML = `
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
+      <div>
+        <h2 style="margin:0; font-size:22px; font-weight:800;">${t('backupTitle')}</h2>
+        <span class="muted small">${t('backupSub')}</span>
+      </div>
+      <div style="display:flex; gap:10px;">
+        <button class="btn btn-ghost" id="btnOpenFolderHead">📂 ${t('openFolder')}</button>
+        <button class="btn btn-primary" id="btnBackupNowHead">⚡ ${t('backupNow')}</button>
+      </div>
+    </div>
+
+    <!-- Top KPI Stat Cards -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-bottom:20px;">
+      <div class="panel-card" style="display:flex; flex-direction:column; gap:6px;">
+        <span class="muted small" style="text-transform:uppercase; font-weight:800; letter-spacing:0.5px;">⏱️ Auto-Backup Schedule</span>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h3 style="margin:0; font-size:18px; font-weight:800;">Every 1 Hour</h3>
+          <span class="pill ok" style="font-size:10px; font-weight:800;">ACTIVE</span>
+        </div>
+        <small class="muted">Runs automatically in background</small>
+      </div>
+
+      <div class="panel-card" style="display:flex; flex-direction:column; gap:6px;">
+        <span class="muted small" style="text-transform:uppercase; font-weight:800; letter-spacing:0.5px;">📅 Retention Strategy</span>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h3 style="margin:0; font-size:18px; font-weight:800;">1 File Per Day</h3>
+          <span class="pill info" style="font-size:10px; font-weight:800;">HOURLY UPDATE</span>
+        </div>
+        <small class="muted">Updated & overwritten every hour</small>
+      </div>
+
+      <div class="panel-card" style="display:flex; flex-direction:column; gap:6px;">
+        <span class="muted small" style="text-transform:uppercase; font-weight:800; letter-spacing:0.5px;">🕒 Last Backup Time</span>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h3 style="margin:0; font-size:14px; font-weight:800; color:var(--text-main); white-space:nowrap; overflow:hidden; text-overflow:ellipsis;">
+            ${info.lastBackupTime ? fmtTime(info.lastBackupTime) : 'Pending first hourly run'}
+          </h3>
+        </div>
+        <small class="muted">${info.lastBackupStatus === 'Success' ? '✓ Backup successful' : 'Status: ' + (info.lastBackupStatus || 'Ready')}</small>
+      </div>
+
+      <div class="panel-card" style="display:flex; flex-direction:column; gap:6px;">
+        <span class="muted small" style="text-transform:uppercase; font-weight:800; letter-spacing:0.5px;">💾 Today's File Size</span>
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h3 style="margin:0; font-size:18px; font-weight:800; color:var(--brand);">
+            ${hasToday ? fmtBytes(info.todayFileSize) : '0 B'}
+          </h3>
+          <span class="pill ${hasToday ? 'ok' : 'warn'}" style="font-size:10px; font-weight:800;">
+            ${hasToday ? (info.todayFileType || 'Active') : 'PENDING'}
+          </span>
+        </div>
+        <small class="muted">${hasToday ? info.todayFile : 'Will generate on next cycle'}</small>
+      </div>
+    </div>
+
+    <!-- Backup Storage Directory Selector -->
+    <div class="panel-card" style="margin-bottom:20px;">
+      <div class="panel-header-row" style="margin-bottom:12px;">
+        <div>
+          <h3 class="panel-heading" style="margin:0; font-size:16px;">📁 ${t('backupPathLabel')}</h3>
+          <small class="muted">Select any local partition, Documents folder, or USB drive destination</small>
+        </div>
+        <div style="display:flex; gap:8px;">
+          <button class="btn btn-sm btn-ghost" id="btnOpenFolderRow">📂 ${t('openFolder')}</button>
+          <button class="btn btn-sm btn-primary" id="btnBrowseFolderRow">${t('browseFolder')}</button>
+        </div>
+      </div>
+
+      <div style="display:flex; gap:10px; align-items:center; margin-bottom:14px; flex-wrap:wrap;">
+        <div style="flex:1; min-width:280px;">
+          <input id="txtBackupPath" value="${esc(info.backupPath)}" style="width:100%; font-family:monospace; font-size:13px; font-weight:600; padding:10px 14px; background:var(--bg-card-subtle); border:1px solid var(--border-card); border-radius:8px;">
+        </div>
+        <button class="btn btn-secondary btn-sm" id="btnSavePath">${t('savePath')}</button>
+      </div>
+
+      <div style="padding:12px 16px; border-radius:10px; background:radial-gradient(ellipse at top left, rgba(91,82,249,0.08), transparent 70%); border:1px solid rgba(91,82,249,0.2); font-size:12.5px; line-height:1.6;">
+        <b>💡 How Hourly Database Protection Works:</b>
+        <ul style="margin:6px 0 0; padding-left:18px; color:var(--text-muted);">
+          <li><b>One File Per Day:</b> Rather than creating 24 separate files every single day and consuming storage space, the system saves exactly <b>one file per day</b> (e.g., <code>BookShop_Backup_${info.todayDate}.bak</code> or <code>.json</code>).</li>
+          <li><b>Updated Hourly:</b> Every hour, the system updates this exact file with your latest inventory changes, sales receipts, and user activity.</li>
+          <li><b>Dual-Safe Storage:</b> Performs both native SQL Server <code>.bak</code> backups and structured JSON database exports to ensure your data is 100% portable and protected across operating systems.</li>
+        </ul>
+      </div>
+    </div>
+
+    <!-- Today's Active Daily Backup Card -->
+    <div class="panel-card" style="margin-bottom:20px; border-left:4px solid ${hasToday ? 'var(--accent-lime)' : 'var(--accent-amber)'};">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; margin-bottom:12px;">
+        <div style="display:flex; align-items:center; gap:10px;">
+          <span style="font-size:24px;">${hasToday ? '🟢' : '🟡'}</span>
+          <div>
+            <h3 style="margin:0; font-size:16px; font-weight:800;">
+              ${hasToday ? "Today's Active Daily Backup Is Up To Date" : "Today's First Backup Pending"}
+            </h3>
+            <span class="muted small">
+              ${hasToday 
+                ? `Last updated ${fmtTime(info.todayFileMtime)} · Overwritten/refreshed every hour` 
+                : 'No backup recorded for today yet. It will run automatically or you can trigger it now.'}
+            </span>
+          </div>
+        </div>
+        <button class="btn btn-sm btn-primary" id="btnBackupNowCard">⚡ ${hasToday ? 'Update Backup Now' : 'Create First Backup Now'}</button>
+      </div>
+
+      ${hasToday ? `
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; padding:12px; background:var(--bg-card-subtle); border-radius:8px;">
+          <div>
+            <span class="muted small" style="display:block;">${t('fileName')}</span>
+            <code style="font-size:13px; font-weight:800; color:var(--brand);">${info.todayFile}</code>
+          </div>
+          <div>
+            <span class="muted small" style="display:block;">${t('fileSize')}</span>
+            <b style="font-size:13.5px;">${fmtBytes(info.todayFileSize)}</b>
+          </div>
+          <div>
+            <span class="muted small" style="display:block;">${t('fileType')}</span>
+            <span class="pill info" style="font-size:11px;">${info.todayFileType || 'SQL Server / JSON'}</span>
+          </div>
+          <div>
+            <span class="muted small" style="display:block;">${t('lastUpdated')}</span>
+            <b style="font-size:13px;">${fmtTime(info.todayFileMtime)}</b>
+          </div>
+        </div>
+      ` : `
+        <div style="padding:14px; text-align:center; color:var(--text-muted); font-size:13px;">
+          Press <b>⚡ Create First Backup Now</b> to create today's backup file immediately.
+        </div>
+      `}
+    </div>
+
+    <!-- Past Daily Backups Archives -->
+    <div class="panel-card">
+      <div class="panel-header-row" style="margin-bottom:14px;">
+        <div>
+          <h3 class="panel-heading" style="margin:0; font-size:16px;">📚 ${t('historyBackups')}</h3>
+          <small class="muted">Daily backup files found in the selected folder (${info.backupsList.length} files found)</small>
+        </div>
+        <button class="btn btn-sm btn-ghost" id="btnRefreshList">🔄 Refresh List</button>
+      </div>
+
+      ${info.backupsList.length ? `
+        <div class="table-card" style="margin-top:10px;">
+          <table>
+            <thead>
+              <tr>
+                <th style="width:130px;">Date</th>
+                <th>${t('fileName')}</th>
+                <th style="width:100px;">${t('fileType')}</th>
+                <th style="width:110px;">${t('fileSize')}</th>
+                <th style="width:200px;">${t('lastUpdated')}</th>
+                <th style="width:120px; text-align:right;">Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${info.backupsList.map(b => `
+                <tr>
+                  <td><b style="font-size:13px;">${b.date}</b></td>
+                  <td><code style="font-size:12.5px; font-weight:700;">${b.fileName}</code></td>
+                  <td><span class="pill ${b.type === 'BAK' ? 'info' : 'ok'}" style="font-size:10px;">${b.type}</span></td>
+                  <td>${fmtBytes(b.size)}</td>
+                  <td><span class="small muted">${fmtTime(b.updatedAt)}</span></td>
+                  <td style="text-align:right;">
+                    <button class="btn btn-xs btn-ghost btn-open-item-folder" title="Open directory">📂 Reveal</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      ` : `
+        <div style="padding:32px; text-align:center; color:var(--text-muted);">
+          <div style="font-size:32px; margin-bottom:8px;">📂</div>
+          <p style="margin:0; font-size:13.5px;">No historical backup files in this folder yet.</p>
+          <small>Automated hourly backups will record daily archives here automatically.</small>
+        </div>
+      `}
+    </div>
+  `;
+
+  // Event Listeners
+  const triggerBackup = async (btn) => {
+    try {
+      if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '⏳ Backing up…';
+      }
+      toast(t('backingUp'));
+      const res = await call('backup:run');
+      if (res.success) {
+        toast(t('backupSuccess'));
+      } else {
+        toast('Backup error: ' + (res.error || 'Unknown error'), 1);
+      }
+      await vBackup();
+    } catch (e) {
+      toast(e.message, 1);
+      if (btn) {
+        btn.disabled = false;
+        btn.innerHTML = '⚡ ' + t('backupNow');
+      }
+    }
+  };
+
+  const btnHead = $('#btnBackupNowHead');
+  if (btnHead) btnHead.onclick = () => triggerBackup(btnHead);
+
+  const btnCard = $('#btnBackupNowCard');
+  if (btnCard) btnCard.onclick = () => triggerBackup(btnCard);
+
+  const openFolderFn = async () => {
+    try {
+      await call('backup:openFolder');
+    } catch (e) {
+      toast(e.message, 1);
+    }
+  };
+
+  const btnOpenHead = $('#btnOpenFolderHead');
+  if (btnOpenHead) btnOpenHead.onclick = openFolderFn;
+
+  const btnOpenRow = $('#btnOpenFolderRow');
+  if (btnOpenRow) btnOpenRow.onclick = openFolderFn;
+
+  document.querySelectorAll('.btn-open-item-folder').forEach(el => {
+    el.onclick = openFolderFn;
+  });
+
+  const btnBrowse = $('#btnBrowseFolderRow');
+  if (btnBrowse) {
+    btnBrowse.onclick = async () => {
+      try {
+        const res = await call('backup:chooseDirectory');
+        if (!res.canceled && res.path) {
+          toast(`Backup folder path updated to: ${res.path}`);
+          await vBackup();
+        }
+      } catch (e) {
+        toast(e.message, 1);
+      }
+    };
+  }
+
+  const btnSave = $('#btnSavePath');
+  if (btnSave) {
+    btnSave.onclick = async () => {
+      try {
+        const p = $('#txtBackupPath').value;
+        await call('backup:setPath', { path: p });
+        toast('Backup directory updated successfully!');
+        await vBackup();
+      } catch (e) {
+        toast(e.message, 1);
+      }
+    };
+  }
+
+  const btnRef = $('#btnRefreshList');
+  if (btnRef) btnRef.onclick = () => vBackup();
+}
+
+/* ==========================================================================
    VIEW 3: INVENTORY (ITEMS - STATIONERY, BOOKS, TOYS & SERVICES)
    ========================================================================== */
 async function vItems() {
@@ -4146,6 +4466,23 @@ async function vSubs() {
       </div>
     </div>
 
+    <!-- Database Backup Quick Summary Card -->
+    <div class="panel-card" style="margin-bottom:20px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px; background:radial-gradient(ellipse at top left, rgba(91,82,249,0.06), transparent 70%);">
+      <div style="display:flex; align-items:center; gap:14px;">
+        <div style="width:44px; height:44px; border-radius:12px; background:var(--brand-light); display:grid; place-items:center; font-size:22px;">
+          💾
+        </div>
+        <div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <h4 style="margin:0; font-size:15px; font-weight:800;">Automated Hourly Database Backup: Active</h4>
+            <span class="pill ok" style="font-size:10px; font-weight:800;">1 FILE / DAY</span>
+          </div>
+          <span class="muted small">Refreshes every hour into today's backup file. Safe-keeps all sales, stock & invoice data.</span>
+        </div>
+      </div>
+      <button class="btn btn-sm btn-secondary" id="btnGoToBackup">📁 Configure Backup Settings</button>
+    </div>
+
     <!-- Super Admin Bank Account Card (What customers see when payment is due) -->
     <div class="bank-showcase-panel" style="margin-bottom:24px;">
       <div class="panel-header-row">
@@ -4434,6 +4771,9 @@ async function vSubs() {
       vSubs();
     };
   }
+
+  const btnGoBackup = $('#btnGoToBackup');
+  if (btnGoBackup) btnGoBackup.onclick = () => go('backup');
 
   $('#btnBankCfg').onclick = editBankModal;
   $('#btnEditBank').onclick = editBankModal;

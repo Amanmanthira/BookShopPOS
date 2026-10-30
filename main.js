@@ -1,4 +1,4 @@
-const { app, BrowserWindow, ipcMain, dialog } = require('electron');
+const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const sql = require('mssql');
@@ -158,8 +158,13 @@ async function initDb() {
     receiptHeader: 'WELCOME TO AMECTAR BOOKSHOP',
     receiptFooter: 'Thank you for shopping with us! Photocopy, Print & Lamination Available.',
     receiptPaperWidth: '80mm',
-    receiptAutoPrint: '1'
+    receiptAutoPrint: '1',
+    backupPath: path.join(__dirname, 'backups')
   };
+  try {
+    const defaultBackupDir = path.join(__dirname, 'backups');
+    if (!fs.existsSync(defaultBackupDir)) fs.mkdirSync(defaultBackupDir, { recursive: true });
+  } catch {}
   for (const [k, v] of Object.entries(defaults))
     await q().input('k', sql.NVarChar, k).input('v', sql.NVarChar, v)
       .query('IF NOT EXISTS(SELECT 1 FROM Settings WHERE [Key]=@k) INSERT INTO Settings([Key],[Value]) VALUES(@k,@v)');
@@ -587,6 +592,280 @@ handle('settings:saveReceipt', MA, async (settings = {}) => {
   return true;
 });
 
+/* ==========================================================================
+   AUTOMATED DATABASE BACKUP SYSTEM (Hourly, 1 File Per Day Overwritten/Updated)
+   ========================================================================== */
+function getDefaultBackupPath() {
+  try {
+    const docs = app.getPath('documents');
+    if (docs && fs.existsSync(docs)) return path.join(docs, 'BookShop_Backups');
+  } catch {}
+  try {
+    const userD = app.getPath('userData');
+    if (userD) return path.join(userD, 'Backups');
+  } catch {}
+  return path.join(__dirname, 'backups');
+}
+
+async function performDatabaseBackup() {
+  if (!pool || !pool.connected) {
+    console.warn('[AutoBackup] Database pool not ready, skipping backup.');
+    return { success: false, error: 'Database not connected' };
+  }
+
+  const s = await getSettings();
+  let targetFolder = (s.backupPath || '').trim();
+  if (!targetFolder) targetFolder = getDefaultBackupPath();
+
+  try {
+    if (!fs.existsSync(targetFolder)) {
+      fs.mkdirSync(targetFolder, { recursive: true });
+    }
+  } catch (err) {
+    console.error('[AutoBackup] Failed to ensure backup folder:', err.message);
+    targetFolder = path.join(app.getPath('userData') || __dirname, 'Backups');
+    fs.mkdirSync(targetFolder, { recursive: true });
+  }
+
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const timeStr = `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+  
+  // Strategy: Exactly ONE file per day, updated/overwritten every hour!
+  const bakFileName = `BookShop_Backup_${dateStr}.bak`;
+  const jsonFileName = `BookShop_Backup_${dateStr}.json`;
+  
+  const bakFilePath = path.join(targetFolder, bakFileName);
+  const jsonFilePath = path.join(targetFolder, jsonFileName);
+
+  let bakSuccess = false;
+  let bakError = null;
+  let bakSize = 0;
+
+  // 1. Attempt Native SQL Server .bak Backup with WITH INIT, FORMAT to update the single daily file
+  try {
+    await pool.request()
+      .input('path', sql.NVarChar, bakFilePath)
+      .input('name', sql.NVarChar, `BookShopPOS-DailyBackup-${dateStr}`)
+      .query(`BACKUP DATABASE [${DB.database}] TO DISK = @path WITH INIT, FORMAT, NAME = @name, SKIP, NOREWIND, NOUNLOAD, STATS = 10`);
+    
+    if (fs.existsSync(bakFilePath)) {
+      bakSuccess = true;
+      bakSize = fs.statSync(bakFilePath).size;
+    }
+  } catch (err) {
+    bakError = err.message;
+    console.warn('[AutoBackup] Native SQL Server .bak backup note:', err.message);
+  }
+
+  // 2. Comprehensive Structured JSON Database Snapshot (Guaranteed via Node.js permissions)
+  let jsonSuccess = false;
+  let jsonSize = 0;
+  let stats = {};
+  try {
+    const q = () => pool.request();
+    const [users, items, sales, saleItems, settings, payments, grns, grnItems, subCodes] = await Promise.all([
+      q().query('SELECT Id, Username, FullName, Role, Active, Permissions, PasswordHash FROM Users').then(r => r.recordset).catch(() => []),
+      q().query('SELECT * FROM Items').then(r => r.recordset).catch(() => []),
+      q().query('SELECT * FROM Sales').then(r => r.recordset).catch(() => []),
+      q().query('SELECT * FROM SaleItems').then(r => r.recordset).catch(() => []),
+      q().query('SELECT [Key], [Value] FROM Settings').then(r => r.recordset).catch(() => []),
+      q().query('SELECT * FROM Payments').then(r => r.recordset).catch(() => []),
+      q().query('SELECT * FROM GRNs').then(r => r.recordset).catch(() => []),
+      q().query('SELECT * FROM GRNItems').then(r => r.recordset).catch(() => []),
+      q().query('SELECT * FROM SubscriptionCodes').then(r => r.recordset).catch(() => [])
+    ]);
+
+    stats = {
+      usersCount: users.length,
+      itemsCount: items.length,
+      salesCount: sales.length,
+      saleItemsCount: saleItems.length,
+      grnCount: grns.length,
+      paymentsCount: payments.length
+    };
+
+    const dump = {
+      app: 'Amectar BookShop POS',
+      version: '2.0',
+      database: DB.database,
+      backupDate: dateStr,
+      lastUpdated: now.toISOString(),
+      lastUpdatedFormatted: `${dateStr} ${timeStr}`,
+      frequency: 'Hourly (Updated into same daily file)',
+      stats,
+      data: {
+        Users: users,
+        Items: items,
+        Sales: sales,
+        SaleItems: saleItems,
+        Settings: settings,
+        Payments: payments,
+        GRNs: grns,
+        GRNItems: grnItems,
+        SubscriptionCodes: subCodes
+      }
+    };
+
+    fs.writeFileSync(jsonFilePath, JSON.stringify(dump, null, 2), 'utf-8');
+    jsonSuccess = true;
+    jsonSize = fs.statSync(jsonFilePath).size;
+  } catch (err) {
+    console.error('[AutoBackup] Error exporting JSON backup:', err.message);
+  }
+
+  const success = bakSuccess || jsonSuccess;
+  const isoNow = now.toISOString();
+
+  await setSetting('lastBackupTime', isoNow);
+  await setSetting('lastBackupStatus', success ? 'Success' : 'Failed');
+  await setSetting('lastBackupFile', bakSuccess ? bakFileName : jsonFileName);
+  await setSetting('lastBackupSize', String(bakSuccess ? bakSize : jsonSize));
+
+  return {
+    success,
+    dateStr,
+    timeStr,
+    targetFolder,
+    bakSuccess,
+    bakFileName,
+    bakSize,
+    bakError,
+    jsonSuccess,
+    jsonFileName,
+    jsonSize,
+    stats,
+    updatedAt: isoNow
+  };
+}
+
+async function getBackupInfo() {
+  const s = await getSettings();
+  const folder = (s.backupPath || '').trim() || getDefaultBackupPath();
+  
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const todayStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  
+  const todayBak = `BookShop_Backup_${todayStr}.bak`;
+  const todayJson = `BookShop_Backup_${todayStr}.json`;
+
+  let todayFile = null;
+  let todayFileSize = 0;
+  let todayFileMtime = null;
+  let todayFileType = null;
+
+  if (fs.existsSync(folder)) {
+    const bakPath = path.join(folder, todayBak);
+    const jsonPath = path.join(folder, todayJson);
+    if (fs.existsSync(bakPath)) {
+      const st = fs.statSync(bakPath);
+      todayFile = todayBak;
+      todayFileSize = st.size;
+      todayFileMtime = st.mtime.toISOString();
+      todayFileType = 'BAK (SQL Server)';
+    } else if (fs.existsSync(jsonPath)) {
+      const st = fs.statSync(jsonPath);
+      todayFile = todayJson;
+      todayFileSize = st.size;
+      todayFileMtime = st.mtime.toISOString();
+      todayFileType = 'JSON (Structured DB)';
+    }
+  }
+
+  // Scan folder for all daily backup files
+  const backupsList = [];
+  try {
+    if (fs.existsSync(folder)) {
+      const files = fs.readdirSync(folder);
+      const seenDates = new Set();
+      for (const f of files) {
+        if (f.startsWith('BookShop_Backup_') && (f.endsWith('.bak') || f.endsWith('.json'))) {
+          const match = f.match(/BookShop_Backup_(\d{4}-\d{2}-\d{2})\.(bak|json)/);
+          if (match) {
+            const date = match[1];
+            const fullPath = path.join(folder, f);
+            const st = fs.statSync(fullPath);
+            backupsList.push({
+              fileName: f,
+              date,
+              type: match[2].toUpperCase(),
+              size: st.size,
+              updatedAt: st.mtime.toISOString()
+            });
+          }
+        }
+      }
+      backupsList.sort((a, b) => new Date(b.updatedAt) - new Date(a.updatedAt));
+    }
+  } catch (e) {
+    console.error('Error scanning backup directory:', e);
+  }
+
+  return {
+    backupPath: folder,
+    isDefault: !s.backupPath,
+    interval: 'Every 1 Hour',
+    strategy: '1 File Per Day (Updated Hourly)',
+    lastBackupTime: s.lastBackupTime || todayFileMtime || null,
+    lastBackupStatus: s.lastBackupStatus || (todayFile ? 'Success' : 'Pending'),
+    todayDate: todayStr,
+    todayFile,
+    todayFileSize,
+    todayFileMtime,
+    todayFileType,
+    backupsList: backupsList.slice(0, 50)
+  };
+}
+
+let backupTimer = null;
+function startBackupSchedule() {
+  if (backupTimer) clearInterval(backupTimer);
+  // Auto-backup runs automatically every 1 hour (3600000 ms)
+  backupTimer = setInterval(async () => {
+    try {
+      console.log('[AutoBackup] Hourly scheduled backup starting...');
+      await performDatabaseBackup();
+      console.log('[AutoBackup] Hourly scheduled backup complete.');
+    } catch (e) {
+      console.error('[AutoBackup] Hourly backup failed:', e.message);
+    }
+  }, 60 * 60 * 1000);
+}
+
+handle('backup:getInfo', MA, async () => await getBackupInfo());
+handle('backup:run', MA, async () => await performDatabaseBackup());
+handle('backup:chooseDirectory', MA, async () => {
+  const win = BrowserWindow.getFocusedWindow();
+  const res = await dialog.showOpenDialog(win, {
+    title: 'Select Destination Folder for Automated Hourly Backups',
+    properties: ['openDirectory', 'createDirectory']
+  });
+  if (res.canceled || !res.filePaths.length) return { canceled: true };
+  const chosenPath = res.filePaths[0];
+  await setSetting('backupPath', chosenPath);
+  return { canceled: false, path: chosenPath, info: await getBackupInfo() };
+});
+handle('backup:setPath', MA, async ({ path: newPath }) => {
+  if (!newPath || !newPath.trim()) throw new Error('Backup folder path cannot be empty');
+  const clean = newPath.trim();
+  if (!fs.existsSync(clean)) {
+    fs.mkdirSync(clean, { recursive: true });
+  }
+  await setSetting('backupPath', clean);
+  return await getBackupInfo();
+});
+handle('backup:openFolder', MA, async () => {
+  const s = await getSettings();
+  const bPath = (s.backupPath || '').trim() || getDefaultBackupPath();
+  if (!fs.existsSync(bPath)) {
+    fs.mkdirSync(bPath, { recursive: true });
+  }
+  await shell.openPath(bPath);
+  return true;
+});
+
 handle('users:list', ADMIN, async () => (await pool.request().query('SELECT Id,Username,FullName,Role,Active,Permissions FROM Users ORDER BY Id')).recordset);
 handle('users:save', ADMIN, async ({ id, username, fullName, password, role, active, permissions }) => {
   if (![C, M, A].includes(role)) throw new Error('Invalid role');
@@ -1001,7 +1280,23 @@ function createWindow() {
   w.loadFile(path.join(__dirname, 'renderer', 'index.html'));
 }
 app.whenReady().then(async () => {
-  try { await initDb(); createWindow(); }
+  try {
+    await initDb();
+    createWindow();
+    startBackupSchedule();
+    // Run an initial backup 5 seconds after startup if today's backup file doesn't exist yet
+    setTimeout(async () => {
+      try {
+        const info = await getBackupInfo();
+        if (!info.todayFile) {
+          console.log('[AutoBackup] Running startup database backup...');
+          await performDatabaseBackup();
+        }
+      } catch (err) {
+        console.warn('[AutoBackup] Startup backup note:', err.message);
+      }
+    }, 5000);
+  }
   catch (e) { dialog.showErrorBox('Database error', `Cannot connect to SQL Server:\n${e.message}`); app.quit(); }
 });
 app.on('window-all-closed', () => app.quit());
