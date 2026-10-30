@@ -143,6 +143,15 @@ const D = {
   newItem: ['Add Product', 'භාණ්ඩයක් එක් කරන්න'],
   name: ['Product Name', 'භාණ්ඩයේ නම'],
   category: ['Category', 'කාණ්ඩය'],
+  manageCategories: ['Manage Categories', 'කාණ්ඩ කළමනාකරණය'],
+  categoryName: ['Category Name', 'කාණ්ඩයේ නම'],
+  categoryIcon: ['Category Icon / Emoji', 'කාණ්ඩයේ අයිකනය'],
+  newCategory: ['+ New Category', '+ නව කාණ්ඩයක්'],
+  editCategory: ['Edit Category', 'කාණ්ඩය සංස්කරණය'],
+  deleteCategory: ['Delete Category', 'කාණ්ඩය මකන්න'],
+  categories: ['Categories', 'කාණ්ඩ'],
+  categorySaved: ['Category saved successfully', 'කාණ්ඩය සාර්ථකව සුරකින ලදි'],
+  categoryDeleted: ['Category deleted successfully', 'කාණ්ඩය සාර්ථකව මකා දමන ලදි'],
   price: ['Price (LKR)', 'මිල (රු.)'],
   priceLkr: ['Price (LKR)', 'මිල (රු.)'],
   stockQty: ['Stock Quantity', 'තොග ප්‍රමාණය'],
@@ -159,7 +168,6 @@ const D = {
   invoiceRef: ['Invoice / Ref No', 'ඉන්වොයිස් අංකය'],
   unitCost: ['Unit Cost (LKR)', 'ඒකක පිරිවැය (රු.)'],
   batchNo: ['Batch No / Lot No', 'කාණ්ඩ අංකය (Batch No)'],
-  expiryDate: ['Expiry Date', 'කල් ඉකුත්වන දිනය'],
   updatePrice: ['Update Selling Price?', 'විකුණුම් මිල යාවත්කාලීන කරන්නද?'],
   totalCost: ['Total Goods Value', 'මුළු පිරිවැය'],
   receivedBy: ['Received By', 'ලැබූ පුද්ගලයා'],
@@ -421,8 +429,23 @@ const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': 
 const fmt = n => 'LKR ' + Number(n || 0).toLocaleString('en-LK', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const today = () => new Date(Date.now() - new Date().getTimezoneOffset() * 6e4).toISOString().slice(0, 10);
 const hue = s => [...String(s)].reduce((a, c) => (a * 31 + c.charCodeAt(0)) % 360, 7);
+
+let categoriesList = [];
+async function loadCategories() {
+  try {
+    categoriesList = await call('categories:list');
+  } catch (e) {
+    categoriesList = [];
+  }
+  return categoriesList;
+}
+
 const catIcon = c => {
   if (!c) return '📦';
+  if (Array.isArray(categoriesList) && categoriesList.length) {
+    const found = categoriesList.find(cat => cat.Name && cat.Name.toLowerCase() === String(c).toLowerCase());
+    if (found && found.Icon) return found.Icon;
+  }
   const l = String(c).toLowerCase();
   if (l.includes('stationery') || l.includes('pen') || l.includes('pencil') || l.includes('office') || l.includes('paper')) return '✏️';
   if (l.includes('book') || l.includes('novel') || l.includes('past paper') || l.includes('education')) return '📚';
@@ -2700,7 +2723,10 @@ function openReturnRefundModal() {
    VIEW 2: POS TERMINAL (RAPID KEYBOARD WORKFLOW & ENTERPRISE REGISTER)
    ========================================================================== */
 async function vPos() {
-  items = await call('items:list');
+  [items] = await Promise.all([
+    call('items:list'),
+    loadCategories()
+  ]);
   try {
     cachedReceiptSettings = await call('settings:getReceipt');
   } catch {}
@@ -2950,7 +2976,7 @@ async function vPos() {
   };
 
   const drawGrid = () => {
-    const cats = ['All', ...new Set(items.map(i => i.Category).filter(Boolean))];
+    const cats = ['All', ...new Set([...categoriesList.map(c => c.Name), ...items.map(i => i.Category)].filter(Boolean))];
     $('#cats').innerHTML = cats.map(c => `
       <button class="cat-chip ${c === cat ? 'on' : ''}" data-c="${esc(c)}">
         <span>${c === 'All' ? '🌟' : catIcon(c)}</span> ${c === 'All' ? t('all') : esc(c)}
@@ -4214,7 +4240,10 @@ async function vBackup() {
    VIEW 3: INVENTORY (ITEMS - STATIONERY, BOOKS, TOYS & SERVICES)
    ========================================================================== */
 async function vItems() {
-  items = await call('items:list');
+  [items] = await Promise.all([
+    call('items:list'),
+    loadCategories()
+  ]);
   $('#view').innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
       <div>
@@ -4223,6 +4252,7 @@ async function vItems() {
       </div>
       <div style="display:flex; gap:10px; align-items:center;">
         <input id="s" placeholder="${t('searchItems')}" style="width:240px;">
+        <button class="btn btn-secondary" id="btnManageCategories" title="Add, edit or organize item categories">📂 ${t('manageCategories')}</button>
         <button class="btn btn-secondary" id="btnSeedBookshop" title="Load or reset standard stationery, books, toys & service items">📚 Load Catalog</button>
         <button class="btn btn-secondary" id="btnBarcodeLabels" title="Print barcode stickers for toys, keytags & books">🏷️ Barcode Labels</button>
         <button class="btn btn-primary" id="add">${t('addItem')}</button>
@@ -4290,6 +4320,7 @@ async function vItems() {
   draw();
   $('#s').oninput = draw;
   $('#add').onclick = () => itemForm();
+  $('#btnManageCategories').onclick = () => showManageCategoriesModal(() => vItems());
   $('#btnBarcodeLabels').onclick = () => showBarcodeLabelsModal();
   $('#btnSeedBookshop').onclick = async () => {
     if (confirm('Load standard Bookshop, Stationery, Toys & Print/Copy Service presets into inventory?')) {
@@ -4323,9 +4354,15 @@ async function vItems() {
 const itemForm = (it = {}) => {
   const BOOKSHOP_PRESET_CATS = [
     'Stationery', 'Books', 'Toys & Keytags', 'Photocopy & Print',
-    'Lamination & Binding', 'Typing & Services', 'General'
+    'Lamination & Binding', 'Typing & Services', 'Paper & Files', 'Gift Items & Art', 'General'
   ];
-  const cats = [...new Set([...BOOKSHOP_PRESET_CATS, ...items.map(i => i.Category).filter(Boolean)])];
+  const getCatNames = () => [...new Set([
+    ...categoriesList.map(c => c.Name),
+    ...items.map(i => i.Category),
+    ...BOOKSHOP_PRESET_CATS
+  ].filter(Boolean))];
+
+  const cats = getCatNames();
   let isService = !!(it.IsService || it.ItemType === 'Service');
 
   const m = modal(`
@@ -4366,7 +4403,10 @@ const itemForm = (it = {}) => {
 
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
         <label class="field-wrap">
-          <span class="field-label">${t('category')} *</span>
+          <div style="display:flex; justify-content:space-between; align-items:center;">
+            <span class="field-label">${t('category')} *</span>
+            <button type="button" class="btn btn-ghost btn-sm" id="btnQuickManageCats" style="padding:0 6px; font-size:10px; color:var(--brand); font-weight:800;">+ Manage / Add</button>
+          </div>
           <input id="formItemCategory" list="catDatalist" value="${esc(it.Category || 'Stationery')}" placeholder="Select or type category" required>
           <datalist id="catDatalist">
             ${cats.map(c => `<option value="${esc(c)}">`).join('')}
@@ -4440,6 +4480,17 @@ const itemForm = (it = {}) => {
     toast(`Generated SKU: ${randomSku}`);
   };
 
+  const btnQuickCats = m.querySelector('#btnQuickManageCats');
+  if (btnQuickCats) {
+    btnQuickCats.onclick = () => {
+      showManageCategoriesModal(async () => {
+        await loadCategories();
+        const dl = m.querySelector('#catDatalist');
+        if (dl) dl.innerHTML = getCatNames().map(c => `<option value="${esc(c)}">`).join('');
+      });
+    };
+  }
+
   const onNameChange = () => {
     const val = nameInput.value.trim();
     if (!val) {
@@ -4497,6 +4548,214 @@ const itemForm = (it = {}) => {
     }
   };
 };
+
+/* ==========================================================================
+   CATEGORY MANAGEMENT MODAL (CREATE, RENAME, CUSTOM ICONS & DELETE)
+   ========================================================================== */
+const DEFAULT_CATEGORY_EMOJIS = [
+  '✏️', '📚', '🧸', '🖨️', '🛡️', '⌨️', '📁', '🎁',
+  '🎨', '📐', '🎒', '🔖', '🧩', '📦', '🏷️', '✂️',
+  '📋', '💼', '📌', '📖', '🗞️', '💡', '🌟', '🛒'
+];
+
+async function showManageCategoriesModal(onCategoriesChanged) {
+  await loadCategories();
+
+  let editingId = null;
+
+  const m = modal(`
+    <div class="modal-header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:24px;">📂</span>
+        <div>
+          <h3 class="modal-title">${t('manageCategories')}</h3>
+          <small class="muted">Add, rename, customize icons or remove product & service categories</small>
+        </div>
+      </div>
+      <button class="modal-close-x" data-x>✕</button>
+    </div>
+
+    <!-- Category Create / Edit Form Card -->
+    <div style="background:var(--bg-input); border:1px solid var(--border-card); border-radius:14px; padding:14px; margin-bottom:16px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:10px;">
+        <span id="catFormModeTitle" style="font-weight:800; font-size:13px; color:var(--brand);">+ Add New Category</span>
+        <button type="button" class="btn btn-ghost btn-sm hide" id="btnCancelCatEdit" style="font-size:11px;">Cancel Edit</button>
+      </div>
+
+      <form id="categorySaveForm" style="display:flex; flex-direction:column; gap:10px;">
+        <div style="display:grid; grid-template-columns: 80px 1fr auto; gap:10px; align-items:flex-end;">
+          <label class="field-wrap" style="margin:0;">
+            <span class="field-label" style="font-size:11px;">Icon</span>
+            <input id="catIconInput" maxlength="4" value="📦" style="text-align:center; font-size:20px; padding:6px; height:40px;" required>
+          </label>
+          <label class="field-wrap" style="margin:0;">
+            <span class="field-label" style="font-size:11px;">${t('categoryName')} *</span>
+            <input id="catNameInput" placeholder="e.g. Past Papers, Wooden Toys, School Bags" style="height:40px;" required autocomplete="off">
+          </label>
+          <button type="submit" class="btn btn-primary" id="btnSubmitCat" style="height:40px; padding:0 18px; font-weight:700;">
+            ${t('save')}
+          </button>
+        </div>
+
+        <!-- Quick Emoji Palette -->
+        <div>
+          <span style="font-size:11px; color:var(--text-muted); font-weight:600; display:block; margin-bottom:4px;">Quick Emoji Icons:</span>
+          <div style="display:flex; flex-wrap:wrap; gap:6px;" id="catEmojiPalette">
+            ${DEFAULT_CATEGORY_EMOJIS.map(em => `
+              <button type="button" class="btn btn-ghost btn-sm emoji-select-pill" data-emoji="${em}" style="font-size:16px; padding:4px 8px; border-radius:8px; border:1px solid var(--border-card); line-height:1; cursor:pointer;">
+                ${em}
+              </button>
+            `).join('')}
+          </div>
+        </div>
+      </form>
+    </div>
+
+    <!-- Existing Categories List -->
+    <div style="border:1px solid var(--border-card); border-radius:14px; overflow:hidden;">
+      <div style="padding:10px 14px; background:var(--bg-input); font-size:12px; font-weight:800; display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--border-card);">
+        <span>Existing Categories (${categoriesList.length})</span>
+        <span class="muted" style="font-weight:normal; font-size:11px;">Rename updates all tagged products automatically</span>
+      </div>
+      <div style="max-height:280px; overflow-y:auto;" id="categoriesTableContainer">
+        <!-- Rendered dynamically -->
+      </div>
+    </div>
+
+    <div class="modal-actions" style="margin-top:16px;">
+      <button type="button" class="btn btn-ghost" data-x>${t('close')}</button>
+    </div>
+  `, true);
+
+  const form = m.querySelector('#categorySaveForm');
+  const catIconInput = m.querySelector('#catIconInput');
+  const catNameInput = m.querySelector('#catNameInput');
+  const modeTitle = m.querySelector('#catFormModeTitle');
+  const cancelBtn = m.querySelector('#btnCancelCatEdit');
+  const submitBtn = m.querySelector('#btnSubmitCat');
+  const tableContainer = m.querySelector('#categoriesTableContainer');
+
+  m.querySelector('#catEmojiPalette').onclick = e => {
+    const btn = e.target.closest('[data-emoji]');
+    if (btn) {
+      catIconInput.value = btn.dataset.emoji;
+      catNameInput.focus();
+    }
+  };
+
+  const resetForm = () => {
+    editingId = null;
+    catNameInput.value = '';
+    catIconInput.value = '📦';
+    modeTitle.textContent = '+ Add New Category';
+    modeTitle.style.color = 'var(--brand)';
+    submitBtn.textContent = t('save');
+    cancelBtn.classList.add('hide');
+  };
+
+  cancelBtn.onclick = resetForm;
+
+  const renderTable = () => {
+    if (!categoriesList.length) {
+      tableContainer.innerHTML = `<div class="muted" style="padding:24px; text-align:center;">No categories found. Add your first category above!</div>`;
+      return;
+    }
+
+    tableContainer.innerHTML = `
+      <table style="width:100%; border-collapse:collapse; font-size:13px;">
+        <tbody>
+          ${categoriesList.map(cat => `
+            <tr style="border-bottom:1px solid var(--border-card);">
+              <td style="padding:10px 14px; width:44px; text-align:center;">
+                <span style="font-size:22px; display:inline-block; line-height:1;">${esc(cat.Icon || '📦')}</span>
+              </td>
+              <td style="padding:10px 10px;">
+                <b style="font-size:13.5px;">${esc(cat.Name)}</b>
+                <div style="font-size:11px; color:var(--text-muted); margin-top:2px;">
+                  ${cat.ItemCount || 0} active products & services
+                </div>
+              </td>
+              <td style="padding:10px 14px; text-align:right; white-space:nowrap;">
+                <button type="button" class="btn btn-sm btn-ghost" data-cat-edit="${cat.Id}" data-cat-name="${esc(cat.Name)}" data-cat-icon="${esc(cat.Icon || '📦')}" style="padding:4px 10px; margin-right:4px;">
+                  ✏️ Edit
+                </button>
+                <button type="button" class="btn btn-sm btn-ghost" data-cat-del="${cat.Id}" data-cat-name="${esc(cat.Name)}" data-cat-count="${cat.ItemCount || 0}" style="color:var(--bad); padding:4px 10px;">
+                  🗑️
+                </button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+  };
+
+  renderTable();
+
+  // Handle Edit & Delete inside table
+  tableContainer.onclick = async e => {
+    const editBtn = e.target.closest('[data-cat-edit]');
+    if (editBtn) {
+      editingId = +editBtn.dataset.catEdit;
+      catNameInput.value = editBtn.dataset.catName;
+      catIconInput.value = editBtn.dataset.catIcon;
+      modeTitle.textContent = `✏️ Edit Category: "${editBtn.dataset.catName}"`;
+      modeTitle.style.color = '#eab308';
+      submitBtn.textContent = 'Update Category';
+      cancelBtn.classList.remove('hide');
+      catNameInput.focus();
+      return;
+    }
+
+    const delBtn = e.target.closest('[data-cat-del]');
+    if (delBtn) {
+      const catId = +delBtn.dataset.catDel;
+      const catName = delBtn.dataset.catName;
+      const count = +delBtn.dataset.catCount || 0;
+
+      const confirmMsg = count > 0
+        ? `Delete category "${catName}"?\n\nNote: ${count} products currently in this category will be automatically moved to "General".`
+        : `Are you sure you want to delete category "${catName}"?`;
+
+      if (!confirm(confirmMsg)) return;
+
+      try {
+        await call('categories:delete', { id: catId, reassignTo: 'General' });
+        toast(t('categoryDeleted'));
+        await loadCategories();
+        renderTable();
+        if (editingId === catId) resetForm();
+        if (onCategoriesChanged) onCategoriesChanged();
+      } catch (err) {
+        toast(err.message, 1);
+      }
+    }
+  };
+
+  form.onsubmit = async e => {
+    e.preventDefault();
+    const name = catNameInput.value.trim();
+    const icon = catIconInput.value.trim() || '📦';
+    if (!name) return toast('Category name is required', 1);
+
+    try {
+      await call('categories:save', {
+        id: editingId,
+        name,
+        icon
+      });
+      toast(t('categorySaved'));
+      resetForm();
+      await loadCategories();
+      renderTable();
+      if (onCategoriesChanged) onCategoriesChanged();
+    } catch (err) {
+      toast(err.message, 1);
+    }
+  };
+
+  m.querySelectorAll('[data-x]').forEach(el => el.onclick = m.close);
+}
 
 /* ==========================================================================
    VIEW 4: GRN RECEIVING & SUPPLIER DEBIT NOTES
@@ -4605,7 +4864,7 @@ async function vGrn() {
           <div class="stat-text-col">
             <span class="stat-label-title">Supplier Debit Notes Issued</span>
             <div class="stat-main-number" style="color:var(--bad);">${suppReturns.length}</div>
-            <span class="stat-trend-sub">Damaged, expired or returned stock</span>
+            <span class="stat-trend-sub">Damaged, outdated or returned stock</span>
           </div>
         </div>
         <div class="fin-stat-card" style="border-left:4px solid var(--bad);">
@@ -4921,7 +5180,7 @@ async function showNewSupplierReturnModal(preselectedGrn = null) {
         <span style="font-size:24px;">🚚</span>
         <div>
           <h3 class="modal-title">${t('newSupplierReturn')}</h3>
-          <small class="muted">Return damaged, expired or defective stock back to vendor & deduct inventory</small>
+          <small class="muted">Return damaged, outdated edition or defective stock back to vendor & deduct inventory</small>
         </div>
       </div>
       <button class="modal-close-x" data-x>✕</button>
@@ -4948,7 +5207,7 @@ async function showNewSupplierReturnModal(preselectedGrn = null) {
           <span class="field-label">Primary Return Reason</span>
           <select name="reason" id="suppGeneralReason">
             <option value="Damaged / Defective Goods">Damaged / Defective Goods (හානි වූ භාණ්ඩ)</option>
-            <option value="Expired / Old Stock">Expired / Old Stock (කල් ඉකුත් වූ තොග)</option>
+            <option value="Old Edition / Outdated Stock">Old Edition / Outdated Stock (පරණ සංස්කරණ / පැරණි තොග)</option>
             <option value="Printing / Binding Defect">Printing / Binding Defect (මුද්‍රණ / බයින්ඩින් දෝෂ)</option>
             <option value="Wrong Item Delivered by Supplier">Wrong Item Delivered by Supplier (වැරදි භාණ්ඩයක් එවීම)</option>
             <option value="Overstock Return">Overstock Return (අතිරික්ත තොග ආපසු යැවීම)</option>
@@ -5204,7 +5463,6 @@ async function showGrnDetailsModal(grnId) {
             <th>Qty</th>
             <th>${t('unitCost')}</th>
             <th>${t('batchNo')}</th>
-            <th>${t('expiryDate')}</th>
             <th style="text-align:right;">Total</th>
           </tr>
         </thead>
@@ -5215,7 +5473,6 @@ async function showGrnDetailsModal(grnId) {
               <td>${it.Qty}</td>
               <td>${fmt(it.UnitCost)}</td>
               <td><code>${esc(it.BatchNo || '—')}</code></td>
-              <td><small>${esc(it.ExpiryDate || '—')}</small></td>
               <td style="text-align:right;"><b>${fmt(it.LineTotal)}</b></td>
             </tr>
           `).join('')}
@@ -5251,10 +5508,13 @@ async function showGrnDetailsModal(grnId) {
 }
 
 async function showNewGrnModal() {
-  const catalog = await call('items:list');
+  const [catalog] = await Promise.all([
+    call('items:list'),
+    loadCategories()
+  ]);
   if (!catalog.length) return toast('Please add products to inventory before receiving GRN', 1);
 
-  const categories = ['All', ...new Set(catalog.map(c => c.Category).filter(Boolean))];
+  const categories = ['All', ...new Set([...categoriesList.map(c => c.Name), ...catalog.map(c => c.Category)].filter(Boolean))];
   const pad = n => String(n).padStart(2, '0');
   const d = new Date();
   const defaultGrnNo = `GRN-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${Math.floor(100 + Math.random()*900)}`;
@@ -5268,8 +5528,7 @@ async function showNewGrnModal() {
     currentStock: catalog[0].Stock,
     qty: 10,
     unitCost: Math.round(catalog[0].Price * 0.75),
-    batchNo: `BCH-${d.getFullYear()}${pad(d.getMonth()+1)}-01`,
-    expiryDate: ''
+    batchNo: `BCH-${d.getFullYear()}${pad(d.getMonth()+1)}-01`
   });
 
   const m = modal(`
@@ -5325,10 +5584,9 @@ async function showNewGrnModal() {
             <tr style="background:var(--bg-input); text-align:left;">
               <th style="padding:8px 10px;">Item & Category</th>
               <th style="padding:8px 6px; text-align:center;">Current</th>
-              <th style="padding:8px 6px; width:75px; text-align:center;">Inward Qty</th>
-              <th style="padding:8px 6px; width:90px;">Unit Cost</th>
-              <th style="padding:8px 6px; width:110px;">Batch / GRN #</th>
-              <th style="padding:8px 6px; width:125px;">Expiry Date</th>
+              <th style="padding:8px 6px; width:80px; text-align:center;">Inward Qty</th>
+              <th style="padding:8px 6px; width:100px;">Unit Cost</th>
+              <th style="padding:8px 6px; width:140px;">Batch / Lot No</th>
               <th style="padding:8px 6px; text-align:right;">Line Total</th>
               <th style="padding:8px 6px; width:30px;"></th>
             </tr>
@@ -5369,10 +5627,7 @@ async function showNewGrnModal() {
           <input type="number" min="0" step="0.01" value="${r.unitCost}" data-idx="${i}" data-f="unitCost" style="padding:5px; width:100%;">
         </td>
         <td style="padding:8px 6px;">
-          <input type="text" value="${esc(r.batchNo)}" placeholder="Batch" data-idx="${i}" data-f="batchNo" style="padding:5px; width:100%;">
-        </td>
-        <td style="padding:8px 6px;">
-          <input type="date" value="${esc(r.expiryDate)}" data-idx="${i}" data-f="expiryDate" style="padding:5px; width:100%;">
+          <input type="text" value="${esc(r.batchNo)}" placeholder="Batch / Lot #" data-idx="${i}" data-f="batchNo" style="padding:5px; width:100%;">
         </td>
         <td style="padding:8px 6px; text-align:right; font-weight:800; color:var(--brand);">
           ${fmt((+r.qty || 0) * (+r.unitCost || 0))}
@@ -5381,7 +5636,7 @@ async function showNewGrnModal() {
           <button type="button" class="btn-ghost" data-delrow="${i}" style="color:var(--bad); font-size:14px; cursor:pointer; border:0; padding:2px;">✕</button>
         </td>
       </tr>
-    `).join('') || `<tr><td colspan="8" class="muted" style="text-align:center; padding:20px;">No items added yet. Search and select items above.</td></tr>`;
+    `).join('') || `<tr><td colspan="7" class="muted" style="text-align:center; padding:20px;">No items added yet. Search and select items above.</td></tr>`;
 
     const tot = rows.reduce((s, r) => s + (Number(r.qty) || 0) * (Number(r.unitCost) || 0), 0);
     m.querySelector('#grnTotalCost').textContent = fmt(tot);
@@ -5442,8 +5697,7 @@ async function showNewGrnModal() {
         currentStock: it.Stock,
         qty: 10,
         unitCost: Math.round(it.Price * 0.75),
-        batchNo: `BCH-${d.getFullYear()}${pad(d.getMonth()+1)}-${String(rows.length + 1).padStart(2, '0')}`,
-        expiryDate: ''
+        batchNo: `BCH-${d.getFullYear()}${pad(d.getMonth()+1)}-${String(rows.length + 1).padStart(2, '0')}`
       });
       searchInput.value = '';
       suggestList.classList.add('hide');
@@ -5467,8 +5721,7 @@ async function showNewGrnModal() {
       currentStock: first.Stock,
       qty: 10,
       unitCost: Math.round(first.Price * 0.75),
-      batchNo: '',
-      expiryDate: ''
+      batchNo: ''
     });
     renderRows();
   };
@@ -5507,8 +5760,7 @@ async function showNewGrnModal() {
           itemId: +r.itemId,
           qty: +r.qty || 1,
           unitCost: +r.unitCost || 0,
-          batchNo: r.batchNo,
-          expiryDate: r.expiryDate
+          batchNo: r.batchNo
         }))
       });
       m.close();
@@ -5570,7 +5822,7 @@ const REPORTS = {
       ['Item Received', r => `<b>${esc(r.Item)}</b>`],
       ['Supplier', r => esc(r.Supplier)],
       ['GRN Ref', r => `<code style="font-size:11px;">${esc(r.GrnNo)}</code>`],
-      ['Batch & Expiry', r => `<span class="small muted">${esc(r.BatchNo)} · ${esc(r.ExpiryDate)}</span>`],
+      ['Batch / Lot', r => `<span class="small muted">${esc(r.BatchNo || '—')}</span>`],
       ['Units', r => `<b>${r.Qty}</b>`],
       ['Unit Cost', r => fmt(r.UnitCost)],
       [t('date'), r => r.Day],
@@ -5673,7 +5925,7 @@ async function vReports() {
             <option value="items">📦 Item-wise Sales Breakdown</option>
             <option value="cashiers">👨‍💼 Cashier Performance & AOV</option>
             <option value="grn">🚚 GRN Supplier Receiving & Purchase Costs</option>
-            <option value="grn_items">📋 GRN Item Receiving Detail (Batch & Exp)</option>
+            <option value="grn_items">📋 GRN Item Receiving Detail (Batch & Costs)</option>
             <option value="returns">↩️ Customer Returns & Refunds Breakdown</option>
             <option value="supplier_returns">📤 Supplier Returns & Debit Notes</option>
             <option value="supplier_return_items">📋 Supplier Return Item Details</option>

@@ -27,7 +27,8 @@ const SCHEMA = [
 `IF OBJECT_ID('Returns','U') IS NULL CREATE TABLE Returns(Id INT IDENTITY PRIMARY KEY, ReturnNo NVARCHAR(50) NOT NULL UNIQUE, SaleId INT NULL REFERENCES Sales(Id), InvoiceNo NVARCHAR(50) NULL, CashierId INT NOT NULL REFERENCES Users(Id), TotalRefund DECIMAL(12,2) NOT NULL DEFAULT 0, RefundMethod NVARCHAR(20) NOT NULL DEFAULT 'Cash', Reason NVARCHAR(250) NULL, Notes NVARCHAR(500) NULL, CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME())`,
 `IF OBJECT_ID('ReturnItems','U') IS NULL CREATE TABLE ReturnItems(Id INT IDENTITY PRIMARY KEY, ReturnId INT NOT NULL REFERENCES Returns(Id) ON DELETE CASCADE, ItemId INT NOT NULL REFERENCES Items(Id), ItemName NVARCHAR(100) NOT NULL, Qty INT NOT NULL, UnitPrice DECIMAL(12,2) NOT NULL, RefundTotal DECIMAL(12,2) NOT NULL, Restock BIT NOT NULL DEFAULT 1, Reason NVARCHAR(100) NULL)`,
 `IF OBJECT_ID('SupplierReturns','U') IS NULL CREATE TABLE SupplierReturns(Id INT IDENTITY PRIMARY KEY, ReturnNo NVARCHAR(50) NOT NULL UNIQUE, GrnId INT NULL REFERENCES GRNs(Id), GrnNo NVARCHAR(50) NULL, Supplier NVARCHAR(100) NOT NULL, TotalDebit DECIMAL(12,2) NOT NULL DEFAULT 0, Reason NVARCHAR(250) NULL, Notes NVARCHAR(500) NULL, ReturnedBy NVARCHAR(100) NOT NULL, CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME())`,
-`IF OBJECT_ID('SupplierReturnItems','U') IS NULL CREATE TABLE SupplierReturnItems(Id INT IDENTITY PRIMARY KEY, ReturnId INT NOT NULL REFERENCES SupplierReturns(Id) ON DELETE CASCADE, ItemId INT NOT NULL REFERENCES Items(Id), ItemName NVARCHAR(100) NOT NULL, Qty INT NOT NULL, UnitCost DECIMAL(12,2) NOT NULL DEFAULT 0, LineTotal DECIMAL(12,2) NOT NULL DEFAULT 0, BatchNo NVARCHAR(50) NULL, Reason NVARCHAR(100) NULL)`
+`IF OBJECT_ID('SupplierReturnItems','U') IS NULL CREATE TABLE SupplierReturnItems(Id INT IDENTITY PRIMARY KEY, ReturnId INT NOT NULL REFERENCES SupplierReturns(Id) ON DELETE CASCADE, ItemId INT NOT NULL REFERENCES Items(Id), ItemName NVARCHAR(100) NOT NULL, Qty INT NOT NULL, UnitCost DECIMAL(12,2) NOT NULL DEFAULT 0, LineTotal DECIMAL(12,2) NOT NULL DEFAULT 0, BatchNo NVARCHAR(50) NULL, Reason NVARCHAR(100) NULL)`,
+`IF OBJECT_ID('Categories','U') IS NULL CREATE TABLE Categories(Id INT IDENTITY PRIMARY KEY, Name NVARCHAR(50) NOT NULL UNIQUE, Icon NVARCHAR(10) NULL DEFAULT '📦', CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME())`
 ];
 
 const DEFAULT_BOOKSHOP_ITEMS = [
@@ -133,6 +134,28 @@ async function initDb() {
       'Chicken Fried Rice', 'Egg Fried Rice', 'Chicken Kottu', 'Cheese Kottu',
       'Fish Cutlet', 'Egg Roll', 'Vegetable Roti', 'Milk Tea', 'Lime Juice', 'Coca-Cola 400ml'
     );
+
+    -- Seed Default Bookshop Categories if empty
+    IF NOT EXISTS (SELECT 1 FROM Categories)
+    BEGIN
+      INSERT INTO Categories(Name, Icon) VALUES
+      ('Stationery', '✏️'),
+      ('Books', '📚'),
+      ('Toys & Keytags', '🧸'),
+      ('Photocopy & Print', '🖨️'),
+      ('Lamination & Binding', '📑'),
+      ('Typing & Services', '⌨️'),
+      ('Paper & Files', '📁'),
+      ('Gift Items & Art', '🎁'),
+      ('General', '🌟');
+    END;
+
+    -- Sync any existing distinct categories from Items table
+    INSERT INTO Categories(Name, Icon)
+    SELECT DISTINCT LTRIM(RTRIM(Category)), '📦'
+    FROM Items
+    WHERE Category IS NOT NULL AND LTRIM(RTRIM(Category)) <> ''
+      AND LTRIM(RTRIM(Category)) NOT IN (SELECT Name FROM Categories);
   `);
   const q = () => pool.request();
   if (!(await q().query('SELECT COUNT(*) c FROM Users')).recordset[0].c)
@@ -288,8 +311,8 @@ function hasAccess(ch, session, roles) {
   // Channel to permission mapping
   if (ch.startsWith('sales:')) return userPerms.includes('pos');
   if (ch.startsWith('dashboard:')) return userPerms.includes('dashboard');
-  if (ch.startsWith('items:')) {
-    if (ch === 'items:list') return userPerms.includes('pos') || userPerms.includes('items') || userPerms.includes('grn');
+  if (ch.startsWith('items:') || ch.startsWith('categories:')) {
+    if (ch === 'items:list' || ch === 'categories:list') return userPerms.includes('pos') || userPerms.includes('items') || userPerms.includes('grn');
     return userPerms.includes('items');
   }
   if (ch.startsWith('grn:') || ch.startsWith('supplierReturns:')) return userPerms.includes('grn');
@@ -670,7 +693,7 @@ async function performDatabaseBackup() {
   let stats = {};
   try {
     const q = () => pool.request();
-    const [users, items, sales, saleItems, settings, payments, grns, grnItems, subCodes, returns, returnItems, suppReturns, suppReturnItems] = await Promise.all([
+    const [users, items, sales, saleItems, settings, payments, grns, grnItems, subCodes, returns, returnItems, suppReturns, suppReturnItems, categories] = await Promise.all([
       q().query('SELECT Id, Username, FullName, Role, Active, Permissions, PasswordHash FROM Users').then(r => r.recordset).catch(() => []),
       q().query('SELECT * FROM Items').then(r => r.recordset).catch(() => []),
       q().query('SELECT * FROM Sales').then(r => r.recordset).catch(() => []),
@@ -683,12 +706,14 @@ async function performDatabaseBackup() {
       q().query('SELECT * FROM Returns').then(r => r.recordset).catch(() => []),
       q().query('SELECT * FROM ReturnItems').then(r => r.recordset).catch(() => []),
       q().query('SELECT * FROM SupplierReturns').then(r => r.recordset).catch(() => []),
-      q().query('SELECT * FROM SupplierReturnItems').then(r => r.recordset).catch(() => [])
+      q().query('SELECT * FROM SupplierReturnItems').then(r => r.recordset).catch(() => []),
+      q().query('SELECT * FROM Categories').then(r => r.recordset).catch(() => [])
     ]);
 
     stats = {
       usersCount: users.length,
       itemsCount: items.length,
+      categoriesCount: categories.length,
       salesCount: sales.length,
       saleItemsCount: saleItems.length,
       grnCount: grns.length,
@@ -708,6 +733,7 @@ async function performDatabaseBackup() {
       stats,
       data: {
         Users: users,
+        Categories: categories || [],
         Items: items,
         Sales: sales,
         SaleItems: saleItems,
@@ -941,6 +967,75 @@ handle('items:delete', MA, async ({ id }) => { // soft delete keeps sales histor
 handle('items:seedBookshop', ADMIN, async () => {
   await seedBookshopCatalog(pool);
   return true;
+});
+
+/* ---------- Category Management ---------- */
+handle('categories:list', ALL, async () => (await pool.request().query(`
+  SELECT c.Id, c.Name, ISNULL(c.Icon, '📦') AS Icon,
+         COUNT(i.Id) AS ItemCount
+  FROM Categories c
+  LEFT JOIN Items i ON i.Category = c.Name AND i.Active = 1
+  GROUP BY c.Id, c.Name, c.Icon
+  ORDER BY c.Name ASC
+`)).recordset);
+
+handle('categories:save', MA, async ({ id, name, icon }) => {
+  const n = name?.trim();
+  if (!n) throw new Error('Category name is required');
+  const ic = icon?.trim() || '📦';
+
+  if (id) {
+    const existing = (await pool.request().input('id', sql.Int, id).query('SELECT * FROM Categories WHERE Id=@id')).recordset[0];
+    if (!existing) throw new Error('Category not found');
+
+    const dup = (await pool.request().input('id', sql.Int, id).input('n', sql.NVarChar, n)
+      .query('SELECT Id FROM Categories WHERE Name=@n AND Id<>@id')).recordset[0];
+    if (dup) throw new Error(`Category "${n}" already exists`);
+
+    await pool.request()
+      .input('id', sql.Int, id)
+      .input('n', sql.NVarChar, n)
+      .input('ic', sql.NVarChar, ic)
+      .query('UPDATE Categories SET Name=@n, Icon=@ic WHERE Id=@id');
+
+    if (existing.Name !== n) {
+      await pool.request()
+        .input('oldN', sql.NVarChar, existing.Name)
+        .input('newN', sql.NVarChar, n)
+        .query('UPDATE Items SET Category=@newN WHERE Category=@oldN');
+    }
+    return { id, name: n, icon: ic };
+  } else {
+    const dup = (await pool.request().input('n', sql.NVarChar, n).query('SELECT Id FROM Categories WHERE Name=@n')).recordset[0];
+    if (dup) throw new Error(`Category "${n}" already exists`);
+
+    const ins = (await pool.request()
+      .input('n', sql.NVarChar, n)
+      .input('ic', sql.NVarChar, ic)
+      .query('INSERT INTO Categories(Name, Icon) OUTPUT inserted.Id VALUES(@n, @ic)')).recordset[0];
+    return { id: ins.Id, name: n, icon: ic };
+  }
+});
+
+handle('categories:delete', MA, async ({ id, reassignTo }) => {
+  const cat = (await pool.request().input('id', sql.Int, id).query('SELECT * FROM Categories WHERE Id=@id')).recordset[0];
+  if (!cat) throw new Error('Category not found');
+
+  const itemsCount = (await pool.request().input('n', sql.NVarChar, cat.Name)
+    .query('SELECT COUNT(*) AS c FROM Items WHERE Category=@n AND Active=1')).recordset[0].c;
+
+  if (itemsCount > 0) {
+    const targetCat = reassignTo?.trim() || 'General';
+    const targetExists = (await pool.request().input('t', sql.NVarChar, targetCat).query('SELECT Id FROM Categories WHERE Name=@t')).recordset[0];
+    if (!targetExists) {
+      await pool.request().input('t', sql.NVarChar, targetCat).query('INSERT INTO Categories(Name, Icon) VALUES(@t, \'🌟\')');
+    }
+    await pool.request().input('oldN', sql.NVarChar, cat.Name).input('newN', sql.NVarChar, targetCat)
+      .query('UPDATE Items SET Category=@newN WHERE Category=@oldN');
+  }
+
+  await pool.request().input('id', sql.Int, id).query('DELETE FROM Categories WHERE Id=@id');
+  return { deleted: true, reassignedItems: itemsCount };
 });
 
 handle('sales:checkout', ALL, async ({ lines, paid, paymentMethod, billDiscount, splitCash, splitCard }) => {
@@ -1258,13 +1353,13 @@ handle('reports:grn', MA, async p => (await rng(p, pool.request()).query(
    ORDER BY g.Id DESC`)).recordset);
 
 handle('reports:grn_items', MA, async p => (await rng(p, pool.request()).query(
-  `SELECT gi.ItemName Item, g.Supplier, g.GrnNo, ISNULL(gi.BatchNo, '—') BatchNo, ISNULL(gi.ExpiryDate, '—') ExpiryDate,
+  `SELECT gi.ItemName Item, g.Supplier, g.GrnNo, ISNULL(gi.BatchNo, '—') BatchNo,
           SUM(gi.Qty) Qty, gi.UnitCost, SUM(gi.LineTotal) Total,
           CONVERT(VARCHAR(10),g.CreatedAt,120) Day
    FROM GRNItems gi
    JOIN GRNs g ON g.Id = gi.GrnId
    WHERE g.CreatedAt >= CAST(@f AS DATE) AND g.CreatedAt < DATEADD(day,1,CAST(@t AS DATE))
-   GROUP BY gi.ItemName, g.Supplier, g.GrnNo, gi.BatchNo, gi.ExpiryDate, gi.UnitCost, CONVERT(VARCHAR(10),g.CreatedAt,120)
+   GROUP BY gi.ItemName, g.Supplier, g.GrnNo, gi.BatchNo, gi.UnitCost, CONVERT(VARCHAR(10),g.CreatedAt,120)
    ORDER BY Day DESC, Total DESC`)).recordset);
 
 handle('reports:returns', MA, async p => (await rng(p, pool.request()).query(
@@ -1514,7 +1609,6 @@ handle('grn:create', MA, async ({ grnNo, supplier, invoiceRef, notes, items }) =
         unitCost,
         lineTotal,
         batchNo: row.batchNo?.trim() || null,
-        expiryDate: row.expiryDate?.trim() || null,
         updatePrice: Boolean(row.updatePrice),
         newPrice: +row.newPrice || 0
       });
@@ -1541,7 +1635,7 @@ handle('grn:create', MA, async ({ grnNo, supplier, invoiceRef, notes, items }) =
         .input('uc', sql.Decimal(12, 2), v.unitCost)
         .input('lt', sql.Decimal(12, 2), v.lineTotal)
         .input('bn', sql.NVarChar, v.batchNo)
-        .input('ed', sql.NVarChar, v.expiryDate)
+        .input('ed', sql.NVarChar, null)
         .query('INSERT INTO GRNItems(GrnId,ItemId,ItemName,Qty,UnitCost,LineTotal,BatchNo,ExpiryDate) VALUES(@gid,@iid,@inm,@q,@uc,@lt,@bn,@ed)');
 
       await new sql.Request(tx)
@@ -1621,7 +1715,7 @@ handle('supplierReturns:create', MA, async ({ returnNo, grnId, grnNo, supplier, 
         unitCost,
         lineTotal,
         batchNo: row.batchNo?.trim() || null,
-        reason: row.reason?.trim() || reason || 'Damaged / Expired Goods'
+        reason: row.reason?.trim() || reason || 'Damaged / Outdated Stock'
       });
     }
     totalDebit = r2(totalDebit);
@@ -1633,7 +1727,7 @@ handle('supplierReturns:create', MA, async ({ returnNo, grnId, grnNo, supplier, 
       .input('gn', sql.NVarChar, grnNo?.trim() || null)
       .input('sup', sql.NVarChar, supplier.trim())
       .input('td', sql.Decimal(12, 2), totalDebit)
-      .input('rs', sql.NVarChar, (reason || 'Damaged / Expired Goods').trim())
+      .input('rs', sql.NVarChar, (reason || 'Damaged / Outdated Stock').trim())
       .input('not', sql.NVarChar, notes?.trim() || null)
       .input('ret', sql.NVarChar, session.fullName || session.username)
       .query(`INSERT INTO SupplierReturns(ReturnNo, GrnId, GrnNo, Supplier, TotalDebit, Reason, Notes, ReturnedBy)

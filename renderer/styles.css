@@ -3239,6 +3239,23 @@ tfoot td {
   background: var(--brand-gradient);
 }
 
+/* Category Management & Emoji Palette */
+.emoji-select-pill {
+  transition: transform 0.12s ease, background 0.15s ease, border-color 0.15s ease;
+  user-select: none;
+}
+
+.emoji-select-pill:hover {
+  transform: scale(1.15);
+  background: var(--bg-hover) !important;
+  border-color: var(--brand) !important;
+}
+
+.emoji-select-pill:active {
+  transform: scale(0.95);
+}
+
+
 
 
 
