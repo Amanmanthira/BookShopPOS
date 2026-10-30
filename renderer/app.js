@@ -228,6 +228,14 @@ const D = {
   daily: ['Daily Sales Breakdown', 'දෛනික විකුණුම්'],
   itemwise: ['Item-wise Sales Breakdown', 'භාණ්ඩ අනුව විකුණුම්'],
   cashierwise: ['Cashier-wise Sales Summary', 'අයකැමි අනුව සාරාංශය'],
+  grnReport: ['GRN Supplier Purchases Report', 'GRN සැපයුම්කරු මිලදී ගැනීම් වාර්තාව'],
+  grnItemsReport: ['GRN Item Receiving Details', 'GRN භාණ්ඩ ලැබීම් විස්තර වාර්තාව'],
+  returnsReport: ['Customer Returns & Refunds Report', 'පාරිභෝගික භාණ්ඩ ආපසු භාරගැනීම් සහ මුදල් ගෙවීම් වාර්තාව'],
+  categoryReport: ['Sales by Category & Service', 'කාණ්ඩ සහ සේවා අනුව විකුණුම්'],
+  paymentReport: ['Payment Methods Split (Cash vs Card)', 'ගෙවීම් ක්‍රම අනුව විකුණුම්'],
+  printReport: ['Print Report', 'වාර්තාව මුද්‍රණය'],
+  exportCsv: ['Export CSV', 'CSV ලබාගන්න'],
+  quickRange: ['Quick Range', 'කාල සීමාව'],
   from: ['From', 'සිට'],
   to: ['To', 'දක්වා'],
   run: ['Generate Report', 'වාර්තාව බලන්න'],
@@ -238,6 +246,33 @@ const D = {
   qtySold: ['Qty Sold', 'විකුණූ ප්‍රමාණය'],
   cashier: ['Cashier', 'අයකැමි'],
   noData: ['No records found', 'දත්ත නැත'],
+
+  // Returns & Refunds
+  returnItem: ['Return Item / Refund (F4)', 'භාණ්ඩ ආපසු භාරගැනීම සහ මුදල් ආපසු ගෙවීම (F4)'],
+  returnVoucher: ['Customer Return & Refund Voucher', 'පාරිභෝගික ආපසු භාරගැනීමේ වවුචරය'],
+  findInvoice: ['Find Invoice / Bill', 'බිල්පත සොයන්න'],
+  invPlaceholder: ['Enter Invoice No (e.g. INV-000042) or Bill ID…', 'ඉන්වොයිස් අංකය ඇතුළත් කරන්න (උදා: INV-000042)…'],
+  searchInvoiceBtn: ['Find Invoice', 'සොයන්න'],
+  directReturn: ['Direct Return (No Receipt)', 'කුවිතාන්සියක් රහිතව ආපසු භාරගැනීම'],
+  returnQty: ['Return Qty', 'ආපසු ලබාදෙන ප්‍රමාණය'],
+  restockItem: ['Restock to Inventory', 'නැවත තොගයට එක් කරන්න'],
+  refundMethod: ['Refund Method', 'මුදල් ආපසු ලබාදෙන ක්‍රමය'],
+  returnReason: ['Return Reason', 'ආපසු ලබාදීමට හේතුව'],
+  totalRefund: ['Total Refund Amount', 'මුළු ආපසු ගෙවන මුදල'],
+  processRefund: ['Process Refund & Print Voucher', 'මුදල් ආපසු ගෙවා වවුචරය මුද්‍රණය කරන්න'],
+  returnSuccess: ['Return processed successfully!', 'භාණ්ඩ ආපසු භාරගැනීම සාර්ථකයි!'],
+  purchasedQty: ['Purchased Qty', 'මිලදී ගත් ප්‍රමාණය'],
+  alreadyReturned: ['Already Returned', 'දැනටමත් ආපසු දී ඇති'],
+
+  // Supplier Returns (Debit Notes)
+  supplierReturns: ['Supplier Returns (Debit Notes)', 'සැපයුම්කරුට ආපසු යැවීම් (ඩෙබිට් නෝට්)'],
+  newSupplierReturn: ['+ Return to Supplier (Debit Note)', '+ සැපයුම්කරුට ආපසු යැවීම'],
+  debitNote: ['Debit Note / Supplier Return Note', 'ඩෙබිට් නෝට්ටුව / සැපයුම්කරුට ආපසු යැවීම'],
+  totalDebit: ['Total Debit Value', 'මුළු හර වටිනාකම'],
+  returnedBy: ['Returned By', 'ආපසු යැවූ පුද්ගලයා'],
+  supplierReturnSuccess: ['Supplier return recorded & stock deducted successfully!', 'සැපයුම්කරුට ආපසු යැවීම සාර්ථකයි, තොගයෙන් අඩු කරන ලදී!'],
+  reportSupplierReturns: ['Supplier Returns & Debit Notes', 'සැපයුම්කරු ආපසු යැවීම් සහ ඩෙබිට් නෝට් වාර්තාව'],
+  reportSupplierReturnItems: ['Supplier Return Item Details', 'සැපයුම්කරු ආපසු යැවූ භාණ්ඩ විස්තර'],
   newUser: ['+ New User', '+ නව පරිශීලකයෙක්'],
   editUser: ['Edit User & Permissions', 'පරිශීලක සහ අවසර සංස්කරණය'],
   addUser: ['New User & Permissions', 'නව පරිශීලකයා'],
@@ -2107,6 +2142,539 @@ function showBarcodeLabelsModal() {
 }
 
 /* ==========================================================================
+   CUSTOMER RETURN & REFUND RECEIPT GENERATOR
+   ========================================================================== */
+function renderReturnReceiptHtml(ret, cfg = {}) {
+  const shopName = cfg.shopName || 'AMECTAR BOOKSHOP & COMMUNICATION';
+  const shopAddress = cfg.shopAddress || 'No. 45, Station Road, Colombo';
+  const shopPhone = cfg.shopPhone || 'Tel: 071 234 5678 / 011 234 5678';
+  const paperWidth = cfg.receiptPaperWidth === '58mm' ? '280px' : '320px';
+
+  const items = Array.isArray(ret.items) ? ret.items : [];
+  const tot = +(ret.totalRefund || 0);
+
+  return `
+    <div class="thermal-receipt-paper" style="width:${paperWidth}; font-family:'Courier New', monospace; padding:10px; color:#000;">
+      <div class="tr-header" style="text-align:center;">
+        <h2 class="tr-shop-name" style="margin:0; font-size:16px; font-weight:900;">${esc(shopName)}</h2>
+        ${shopAddress ? `<div class="tr-contact" style="font-size:10px; margin-top:2px;">${esc(shopAddress)}</div>` : ''}
+        ${shopPhone ? `<div class="tr-contact" style="font-size:10px;">${esc(shopPhone)}</div>` : ''}
+        <div style="font-weight:900; font-size:11.5px; margin-top:6px; letter-spacing:0.8px; border:1px solid #000; padding:2px 4px; display:inline-block;">
+          *** RETURN & REFUND VOUCHER ***
+        </div>
+      </div>
+
+      <hr class="tr-divider-double" style="border-top:2px dashed #000; margin:8px 0;">
+
+      <div class="tr-meta-row" style="display:flex; justify-content:space-between; font-size:11px;">
+        <span><b>RET NO:</b> ${esc(ret.returnNo)}</span>
+        <span><b>REF INV:</b> ${esc(ret.invoiceNo || 'DIRECT')}</span>
+      </div>
+      <div class="tr-meta-row" style="display:flex; justify-content:space-between; font-size:11px; margin-top:2px;">
+        <span><b>DATE:</b> ${new Date(ret.createdAt || Date.now()).toLocaleDateString()}</span>
+        <span><b>TIME:</b> ${new Date(ret.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+      </div>
+      <div class="tr-meta-row" style="display:flex; justify-content:space-between; font-size:11px; margin-top:2px;">
+        <span><b>CASHIER:</b> ${esc(ret.cashier || me?.fullName || 'Cashier')}</span>
+        <span><b>METHOD:</b> ${esc(ret.refundMethod || 'Cash').toUpperCase()}</span>
+      </div>
+      <div class="tr-meta-row" style="font-size:11px; margin-top:2px;">
+        <span><b>REASON:</b> ${esc(ret.reason || 'Customer Return')}</span>
+      </div>
+
+      <hr class="tr-divider-dashed" style="border-top:1px dashed #000; margin:8px 0;">
+
+      <table class="tr-table" style="width:100%; border-collapse:collapse; font-size:11px;">
+        <thead>
+          <tr style="border-bottom:1px solid #000;">
+            <th style="text-align:left; width:48%; padding:3px 0;">ITEM</th>
+            <th style="text-align:center; width:14%; padding:3px 0;">QTY</th>
+            <th style="text-align:right; width:18%; padding:3px 0;">PRICE</th>
+            <th style="text-align:right; width:20%; padding:3px 0;">REFUND</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map(it => `
+            <tr>
+              <td style="padding:4px 0;">
+                <div style="font-weight:700;">${esc(it.itemName)}</div>
+                <div style="font-size:9.5px; opacity:0.8;">${it.restock ? '[Restocked]' : '[No Restock]'}</div>
+              </td>
+              <td style="text-align:center; padding:4px 0;">${it.qty}</td>
+              <td style="text-align:right; padding:4px 0;">${Number(it.unitPrice).toFixed(2)}</td>
+              <td style="text-align:right; font-weight:800; padding:4px 0;">${Number(it.refundTotal).toFixed(2)}</td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <hr class="tr-divider-dashed" style="border-top:1px dashed #000; margin:8px 0;">
+
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:14px; font-weight:900; padding:4px 0;">
+        <span>TOTAL REFUND:</span>
+        <span>LKR ${tot.toFixed(2)}</span>
+      </div>
+
+      <hr class="tr-divider-double" style="border-top:2px dashed #000; margin:8px 0;">
+
+      <div class="tr-footer" style="text-align:center; font-size:10.5px; margin-top:6px;">
+        <div>Items accepted for refund / exchange.</div>
+        <div style="font-weight:700; margin-top:2px;">Thank you for shopping at Amectar!</div>
+      </div>
+    </div>
+  `;
+}
+
+/* ==========================================================================
+   CUSTOMER RETURN & REFUND MODAL WORKFLOW (F4)
+   ========================================================================== */
+function openReturnRefundModal() {
+  let invoiceData = null;
+  let itemsToReturn = [];
+  let isManual = false;
+
+  const m = modal(`
+    <div class="modal-header" style="border-bottom:1px solid var(--border); padding-bottom:12px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:24px;">↩️</span>
+        <div>
+          <h3 class="modal-title" style="margin:0; font-size:18px;">${t('returnVoucher')}</h3>
+          <small class="muted">Search original bill by invoice number or perform a direct item return (F4)</small>
+        </div>
+      </div>
+      <button class="modal-close-x" data-x>✕</button>
+    </div>
+
+    <div style="margin-top:14px; display:flex; flex-direction:column; gap:12px;">
+      <!-- Search Invoice Row -->
+      <div id="retSearchRow" style="display:flex; gap:10px; align-items:center;">
+        <div style="flex:1;">
+          <input id="retInvInput" placeholder="${t('invPlaceholder')}" style="width:100%; font-size:13.5px; font-weight:700; padding:10px 14px; border-radius:10px; border:1px solid var(--border); background:var(--bg-input); color:var(--text-main);">
+        </div>
+        <button type="button" class="btn btn-primary" id="btnFindInvoice" style="white-space:nowrap; padding:10px 16px;">
+          🔍 ${t('searchInvoiceBtn')}
+        </button>
+        <button type="button" class="btn btn-secondary" id="btnToggleManual" style="white-space:nowrap; padding:10px 14px;">
+          📋 ${t('directReturn')}
+        </button>
+      </div>
+
+      <!-- Manual Item Picker Row (Direct Return Mode) -->
+      <div id="retManualPickerRow" style="display:none; padding:12px; border-radius:10px; background:var(--bg-card-subtle); border:1px solid var(--border); flex-direction:column; gap:10px;">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <b style="font-size:13px; color:var(--text-main);">Direct Return: Pick Product from Store Inventory</b>
+          <button type="button" class="btn btn-xs btn-ghost" id="btnBackToSearch">← Switch to Invoice Search</button>
+        </div>
+        <div style="display:grid; grid-template-columns:2fr 1fr 1fr auto; gap:10px; align-items:end;">
+          <label class="field-wrap" style="margin:0;">
+            <span class="field-label">Select Product</span>
+            <select id="retManualItemSelect" style="width:100%;">
+              ${items.filter(it => it.Active).map(it => `<option value="${it.Id}">${esc(it.Name)} · LKR ${it.Price.toFixed(2)} (${it.IsService ? 'Service' : 'Stock: ' + it.Stock})</option>`).join('')}
+            </select>
+          </label>
+          <label class="field-wrap" style="margin:0;">
+            <span class="field-label">Return Qty</span>
+            <input id="retManualQty" type="number" min="1" value="1">
+          </label>
+          <label class="field-wrap" style="margin:0;">
+            <span class="field-label">Refund Unit Price</span>
+            <input id="retManualPrice" type="number" step="0.5" value="0">
+          </label>
+          <button type="button" class="btn btn-primary btn-sm" id="btnAddManualItem" style="height:38px;">
+            + Add Item
+          </button>
+        </div>
+      </div>
+
+      <!-- Invoice Info Banner -->
+      <div id="retInvBanner" style="display:none; padding:12px 14px; border-radius:10px; background:radial-gradient(ellipse at top left, rgba(91,82,249,0.08), transparent 70%); border:1px solid rgba(91,82,249,0.2);"></div>
+
+      <!-- Items Table Area -->
+      <div id="retItemsArea" style="max-height:280px; overflow-y:auto; border:1px solid var(--border); border-radius:10px; padding:4px; background:var(--bg-card);">
+        <div style="padding:32px; text-align:center; color:var(--text-muted); font-size:13px;" id="retEmptyPrompt">
+          Type an Invoice Number above (e.g. <code>INV-000042</code> or <code>42</code>) and click <b>Find Invoice</b>, or click <b>Direct Return</b>.
+        </div>
+      </div>
+
+      <!-- Refund Details Bar -->
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+        <label class="field-wrap">
+          <span class="field-label">${t('refundMethod')}</span>
+          <select id="retRefundMethod">
+            <option value="Cash">Cash Refund (මුදල්)</option>
+            <option value="Card">Card Reversal (කාඩ්පත්)</option>
+            <option value="Credit">Store Credit / Exchange (මාරු කිරීම)</option>
+          </select>
+        </label>
+        <label class="field-wrap">
+          <span class="field-label">${t('returnReason')}</span>
+          <select id="retGeneralReason">
+            <option value="Customer Change of Mind">Customer Change of Mind (අදහස වෙනස් වීම)</option>
+            <option value="Wrong Item Purchased">Wrong Item Purchased (වැරදි භාණ්ඩයක් රැගෙන යාම)</option>
+            <option value="Defective / Damaged Item">Defective / Damaged Item (දෝෂ සහිත / හානි වූ භාණ්ඩය)</option>
+            <option value="Exchange for Other Product">Exchange for Other Product (වෙනත් භාණ්ඩයකට මාරු කිරීම)</option>
+            <option value="Other">Other Reason (වෙනත්)</option>
+          </select>
+        </label>
+      </div>
+
+      <label class="field-wrap">
+        <span class="field-label">Additional Notes / Remarks</span>
+        <input id="retNotes" placeholder="Optional notes regarding returned items condition or replacement bill…">
+      </label>
+
+      <!-- Total Refund Banner & Actions -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-radius:12px; background:radial-gradient(ellipse at top left, rgba(239,68,68,0.1), transparent 70%); border:1px solid rgba(239,68,68,0.3);">
+        <div>
+          <span class="muted small" style="display:block; text-transform:uppercase; font-weight:800; letter-spacing:0.5px;">${t('totalRefund')}</span>
+          <h2 id="retTotalDisplay" style="margin:2px 0 0; color:var(--bad); font-size:22px; font-weight:900;">LKR 0.00</h2>
+        </div>
+        <div style="display:flex; gap:10px;">
+          <button type="button" class="btn btn-ghost" data-x>${t('cancel')}</button>
+          <button type="button" class="btn btn-primary" id="btnSubmitRefund" style="background:var(--bad); border:none; box-shadow:0 4px 12px rgba(239,68,68,0.3); font-weight:800;">
+            ↩️ ${t('processRefund')}
+          </button>
+        </div>
+      </div>
+    </div>
+  `, true);
+
+  m.querySelectorAll('[data-x]').forEach(el => el.onclick = m.close);
+
+  const updateTotalRefundDisplay = () => {
+    let tot = 0;
+    if (isManual) {
+      tot = itemsToReturn.reduce((s, it) => s + (it.qty * it.unitPrice), 0);
+    } else {
+      m.querySelectorAll('.ret-item-row').forEach(tr => {
+        const chk = tr.querySelector('.ret-item-check');
+        const qtyInp = tr.querySelector('.ret-qty-inp');
+        const price = +tr.dataset.price || 0;
+        if (chk && chk.checked && qtyInp) {
+          const q = parseInt(qtyInp.value) || 0;
+          tot += (q * price);
+        }
+      });
+    }
+    m.querySelector('#retTotalDisplay').textContent = fmt(tot);
+    return tot;
+  };
+
+  const renderInvoiceItemsTable = (itemsList) => {
+    if (!itemsList || !itemsList.length) {
+      m.querySelector('#retItemsArea').innerHTML = `
+        <div style="padding:24px; text-align:center; color:var(--text-muted);">
+          No returnable items found on this bill.
+        </div>
+      `;
+      return;
+    }
+    m.querySelector('#retItemsArea').innerHTML = `
+      <table class="data-table" style="width:100%; font-size:12.5px;">
+        <thead>
+          <tr>
+            <th style="width:40px; text-align:center;">Return</th>
+            <th>Item Name</th>
+            <th style="width:90px;">Price</th>
+            <th style="width:75px;">Bought</th>
+            <th style="width:80px;">Returned</th>
+            <th style="width:85px;">Return Qty</th>
+            <th style="width:110px;">Restock?</th>
+            <th style="width:90px; text-align:right;">Refund</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsList.map(it => {
+            const avail = it.availableReturnQty;
+            const disabled = avail <= 0;
+            return `
+              <tr class="ret-item-row" data-id="${it.ItemId}" data-name="${esc(it.ItemName)}" data-price="${it.UnitPrice}" data-avail="${avail}" style="${disabled ? 'opacity:0.5;' : ''}">
+                <td style="text-align:center;">
+                  <input type="checkbox" class="ret-item-check" ${disabled ? 'disabled' : ''} style="cursor:pointer; accent-color:var(--bad);">
+                </td>
+                <td>
+                  <b>${esc(it.ItemName)}</b>
+                  ${it.IsService ? '<span class="pill info" style="font-size:9px; margin-left:4px;">Service</span>' : ''}
+                </td>
+                <td>${fmt(it.UnitPrice)}</td>
+                <td>${it.Qty}</td>
+                <td>${it.ReturnedQty > 0 ? `<span class="pill warn" style="font-size:10px;">${it.ReturnedQty} ret</span>` : '0'}</td>
+                <td>
+                  <input type="number" class="ret-qty-inp" min="1" max="${avail}" value="1" ${disabled ? 'disabled' : ''} style="width:65px; padding:4px 6px; font-size:12px; font-weight:700;">
+                </td>
+                <td>
+                  <label style="display:flex; align-items:center; gap:6px; font-size:11.5px; cursor:pointer; user-select:none;">
+                    <input type="checkbox" class="ret-restock-check" ${it.IsService ? 'disabled' : 'checked'} style="accent-color:var(--brand);">
+                    <span>${it.IsService ? 'No Stock' : 'Restock'}</span>
+                  </label>
+                </td>
+                <td style="text-align:right; font-weight:800; color:var(--bad);" class="ret-line-total">
+                  ${disabled ? '0.00' : fmt(it.UnitPrice)}
+                </td>
+              </tr>
+            `;
+          }).join('')}
+        </tbody>
+      </table>
+    `;
+
+    m.querySelectorAll('.ret-item-check, .ret-qty-inp').forEach(el => {
+      el.onchange = () => {
+        const tr = el.closest('tr');
+        const chk = tr.querySelector('.ret-item-check');
+        const qtyInp = tr.querySelector('.ret-qty-inp');
+        const price = +tr.dataset.price || 0;
+        const avail = +tr.dataset.avail || 0;
+        let q = parseInt(qtyInp.value) || 1;
+        if (q > avail) { q = avail; qtyInp.value = q; }
+        if (q < 1) { q = 1; qtyInp.value = 1; }
+        const lineTot = chk.checked ? (q * price) : 0;
+        tr.querySelector('.ret-line-total').textContent = fmt(lineTot);
+        updateTotalRefundDisplay();
+      };
+      if (el.classList.contains('ret-qty-inp')) {
+        el.oninput = el.onchange;
+      }
+    });
+
+    updateTotalRefundDisplay();
+  };
+
+  const renderManualItemsTable = () => {
+    if (!itemsToReturn.length) {
+      m.querySelector('#retItemsArea').innerHTML = `
+        <div style="padding:24px; text-align:center; color:var(--text-muted);">
+          No items added to return list yet. Pick a product above and click <b>+ Add Item</b>.
+        </div>
+      `;
+      updateTotalRefundDisplay();
+      return;
+    }
+    m.querySelector('#retItemsArea').innerHTML = `
+      <table class="data-table" style="width:100%; font-size:12.5px;">
+        <thead>
+          <tr>
+            <th>Item Name</th>
+            <th style="width:90px;">Unit Price</th>
+            <th style="width:85px;">Return Qty</th>
+            <th style="width:110px;">Restock?</th>
+            <th style="width:100px; text-align:right;">Refund</th>
+            <th style="width:40px;"></th>
+          </tr>
+        </thead>
+        <tbody>
+          ${itemsToReturn.map((it, idx) => `
+            <tr>
+              <td><b>${esc(it.itemName)}</b></td>
+              <td>${fmt(it.unitPrice)}</td>
+              <td>${it.qty}</td>
+              <td><span class="pill ${it.restock ? 'ok' : 'info'}" style="font-size:10px;">${it.restock ? 'Restock' : 'No Restock'}</span></td>
+              <td style="text-align:right; font-weight:800; color:var(--bad);">${fmt(it.qty * it.unitPrice)}</td>
+              <td>
+                <button type="button" class="btn btn-xs btn-ghost btn-del-manual" data-idx="${idx}" style="color:var(--bad);">✕</button>
+              </td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+    `;
+
+    m.querySelectorAll('.btn-del-manual').forEach(btn => {
+      btn.onclick = () => {
+        itemsToReturn.splice(+btn.dataset.idx, 1);
+        renderManualItemsTable();
+      };
+    });
+
+    updateTotalRefundDisplay();
+  };
+
+  const findInvoiceAction = async () => {
+    const raw = (m.querySelector('#retInvInput')?.value || '').trim();
+    if (!raw) return toast('Please enter an invoice number to search', 1);
+
+    const btn = m.querySelector('#btnFindInvoice');
+    btn.disabled = true;
+    btn.textContent = 'Searching…';
+
+    try {
+      const res = await call('returns:findInvoice', { invoiceNo: raw });
+      invoiceData = res.sale;
+      isManual = false;
+      m.querySelector('#retManualPickerRow').style.display = 'none';
+      m.querySelector('#retSearchRow').style.display = 'flex';
+
+      const banner = m.querySelector('#retInvBanner');
+      banner.style.display = 'block';
+      banner.innerHTML = `
+        <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+          <div>
+            <b style="font-size:14px; color:var(--brand);">Bill ${res.sale.InvoiceNo}</b>
+            <span class="muted small" style="margin-left:8px;">Cashier: <b>${esc(res.sale.CashierName || 'Cashier')}</b> · Date: <b>${new Date(res.sale.CreatedAt).toLocaleDateString()}</b></span>
+          </div>
+          <div>
+            <span class="muted small">Original Paid: <b>${fmt(res.sale.Total)}</b> (${esc(res.sale.PaymentMethod)})</span>
+          </div>
+        </div>
+      `;
+
+      renderInvoiceItemsTable(res.items);
+    } catch (err) {
+      toast(err.message, 1);
+    } finally {
+      btn.disabled = false;
+      btn.textContent = '🔍 ' + t('searchInvoiceBtn');
+    }
+  };
+
+  m.querySelector('#btnFindInvoice').onclick = findInvoiceAction;
+  m.querySelector('#retInvInput').onkeydown = e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      findInvoiceAction();
+    }
+  };
+
+  // Toggle Direct Manual Return Mode
+  m.querySelector('#btnToggleManual').onclick = () => {
+    isManual = true;
+    invoiceData = null;
+    itemsToReturn = [];
+    m.querySelector('#retSearchRow').style.display = 'none';
+    m.querySelector('#retInvBanner').style.display = 'none';
+    m.querySelector('#retManualPickerRow').style.display = 'flex';
+
+    // Set initial price for selected item in picker
+    const sel = m.querySelector('#retManualItemSelect');
+    if (sel) {
+      const firstIt = items.find(it => it.Id === +sel.value);
+      if (firstIt) m.querySelector('#retManualPrice').value = firstIt.Price;
+      sel.onchange = () => {
+        const it = items.find(x => x.Id === +sel.value);
+        if (it) m.querySelector('#retManualPrice').value = it.Price;
+      };
+    }
+
+    renderManualItemsTable();
+  };
+
+  m.querySelector('#btnBackToSearch').onclick = () => {
+    isManual = false;
+    itemsToReturn = [];
+    m.querySelector('#retManualPickerRow').style.display = 'none';
+    m.querySelector('#retSearchRow').style.display = 'flex';
+    m.querySelector('#retItemsArea').innerHTML = `
+      <div style="padding:32px; text-align:center; color:var(--text-muted); font-size:13px;">
+        Type an Invoice Number above (e.g. <code>INV-000042</code> or <code>42</code>) and click <b>Find Invoice</b>.
+      </div>
+    `;
+    updateTotalRefundDisplay();
+  };
+
+  m.querySelector('#btnAddManualItem').onclick = () => {
+    const sel = m.querySelector('#retManualItemSelect');
+    const it = items.find(x => x.Id === +sel.value);
+    if (!it) return;
+    const qty = parseInt(m.querySelector('#retManualQty').value) || 1;
+    const unitPrice = parseFloat(m.querySelector('#retManualPrice').value) || it.Price;
+    if (qty < 1) return toast('Quantity must be at least 1', 1);
+
+    itemsToReturn.push({
+      itemId: it.Id,
+      itemName: it.Name,
+      qty,
+      unitPrice,
+      restock: !it.IsService
+    });
+
+    renderManualItemsTable();
+  };
+
+  // Submit Refund
+  m.querySelector('#btnSubmitRefund').onclick = async () => {
+    try {
+      const refundMethod = m.querySelector('#retRefundMethod').value;
+      const generalReason = m.querySelector('#retGeneralReason').value;
+      const notes = m.querySelector('#retNotes').value;
+
+      let payloadItems = [];
+      let saleId = invoiceData ? invoiceData.Id : null;
+      let invoiceNo = invoiceData ? invoiceData.InvoiceNo : null;
+
+      if (isManual) {
+        if (!itemsToReturn.length) {
+          return toast('Please add at least one item to return list', 1);
+        }
+        payloadItems = itemsToReturn.map(it => ({
+          itemId: it.itemId,
+          itemName: it.itemName,
+          qty: it.qty,
+          unitPrice: it.unitPrice,
+          restock: it.restock,
+          reason: generalReason
+        }));
+      } else {
+        m.querySelectorAll('.ret-item-row').forEach(tr => {
+          const chk = tr.querySelector('.ret-item-check');
+          if (chk && chk.checked) {
+            const qty = parseInt(tr.querySelector('.ret-qty-inp').value) || 0;
+            if (qty > 0) {
+              payloadItems.push({
+                itemId: +tr.dataset.id,
+                itemName: tr.dataset.name,
+                qty,
+                unitPrice: +tr.dataset.price,
+                restock: tr.querySelector('.ret-restock-check').checked,
+                reason: generalReason
+              });
+            }
+          }
+        });
+        if (!payloadItems.length) {
+          return toast('Please check at least one item to return', 1);
+        }
+      }
+
+      const submitBtn = m.querySelector('#btnSubmitRefund');
+      submitBtn.disabled = true;
+      submitBtn.textContent = 'Processing…';
+
+      const res = await call('returns:process', {
+        saleId,
+        invoiceNo,
+        items: payloadItems,
+        refundMethod,
+        reason: generalReason,
+        notes
+      });
+
+      m.close();
+      toast(t('returnSuccess') + ` (Voucher: ${res.returnNo})`);
+
+      // Refresh inventory items
+      try {
+        items = await call('items:list');
+        if (tab === 'pos') drawGrid();
+      } catch {}
+
+      // Print Return Voucher
+      const printArea = document.getElementById('printableReceiptArea');
+      if (printArea) {
+        printArea.innerHTML = renderReturnReceiptHtml(res, res.shopSettings);
+        window.print();
+      }
+    } catch (err) {
+      toast(err.message, 1);
+      const submitBtn = m.querySelector('#btnSubmitRefund');
+      if (submitBtn) {
+        submitBtn.disabled = false;
+        submitBtn.textContent = '↩️ ' + t('processRefund');
+      }
+    }
+  };
+}
+
+/* ==========================================================================
    VIEW 2: POS TERMINAL (RAPID KEYBOARD WORKFLOW & ENTERPRISE REGISTER)
    ========================================================================== */
 async function vPos() {
@@ -2142,6 +2710,9 @@ async function vPos() {
           </button>
           <button type="button" class="btn btn-secondary" id="btnPosCustom" title="Quick Custom Item (F3)" style="display:flex; align-items:center; gap:6px; font-weight:700; white-space:nowrap; padding:10px 14px; border-radius:12px;">
             <span>⚡ Custom (F3)</span>
+          </button>
+          <button type="button" class="btn btn-secondary" id="btnPosReturn" title="Customer Return & Refund (F4)" style="display:flex; align-items:center; gap:6px; font-weight:700; white-space:nowrap; padding:10px 14px; border-radius:12px; color:var(--bad); border:1px solid rgba(239,68,68,0.25); background:rgba(239,68,68,0.06);">
+            <span>↩️ Return (F4)</span>
           </button>
         </div>
 
@@ -2534,6 +3105,7 @@ async function vPos() {
 
   $('#btnPosCalc').onclick = () => showPrintServiceCalculator(customLine => add(null, customLine));
   $('#btnPosCustom').onclick = () => showQuickCustomItemModal(customLine => add(null, customLine));
+  $('#btnPosReturn').onclick = () => openReturnRefundModal();
 
   $('#cats').onclick = e => {
     const b = e.target.closest('button');
@@ -2633,6 +3205,13 @@ async function vPos() {
     if (e.key === 'F3') {
       e.preventDefault();
       showQuickCustomItemModal(customLine => add(null, customLine));
+      return;
+    }
+
+    // F4: Return Item / Customer Refund Modal
+    if (e.key === 'F4') {
+      e.preventDefault();
+      openReturnRefundModal();
       return;
     }
 
@@ -3580,96 +4159,688 @@ const itemForm = (it = {}) => {
 };
 
 /* ==========================================================================
-   VIEW 4: GRN RECEIVING (GOODS RECEIVED NOTE)
+   VIEW 4: GRN RECEIVING & SUPPLIER DEBIT NOTES
    ========================================================================== */
 async function vGrn() {
-  const grns = await call('grn:list');
+  let activeSubTab = 'grn'; // 'grn' | 'returns'
+
+  const [grns, suppReturns] = await Promise.all([
+    call('grn:list'),
+    call('supplierReturns:list')
+  ]);
+
   const totalReceived = grns.reduce((s, g) => s + Number(g.TotalCost || 0), 0);
+  const totalDebited = suppReturns.reduce((s, r) => s + Number(r.TotalDebit || 0), 0);
 
   $('#view').innerHTML = `
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
       <div>
-        <h2 style="margin:0; font-size:22px; font-weight:800;">${t('grn')}</h2>
-        <span class="muted small">Stationery, Books & Goods Inward Receipts</span>
+        <h2 style="margin:0; font-size:22px; font-weight:800;">${t('grn')} & Supplier Operations</h2>
+        <span class="muted small">Goods inward receipts, supplier purchases & outgoing debit note returns</span>
       </div>
-      <div style="display:flex; gap:10px;">
-        <input id="grnSearch" placeholder="Search supplier or GRN #…" style="width:240px;">
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <input id="grnSearch" placeholder="Search supplier, GRN # or return #…" style="width:240px;">
+        <button class="btn btn-secondary" id="btnSupplierReturn" style="display:flex; align-items:center; gap:6px; color:var(--bad); border:1px solid rgba(239,68,68,0.3); background:rgba(239,68,68,0.06); font-weight:700;">
+          <span>🚚 ${t('newSupplierReturn')}</span>
+        </button>
         <button class="btn btn-primary" id="btnNewGrn">${t('newGrn')}</button>
       </div>
     </div>
 
-    <div class="top-stats-row" style="margin-bottom:20px;">
-      <div class="fin-stat-card">
-        <div class="stat-text-col">
-          <span class="stat-label-title">Total GRN Receipts</span>
-          <div class="stat-main-number purple">${grns.length}</div>
-          <span class="stat-trend-sub">Completed inward shipments</span>
-        </div>
-      </div>
-      <div class="fin-stat-card">
-        <div class="stat-text-col">
-          <span class="stat-label-title">Total Purchases Value</span>
-          <div class="stat-main-number green">${fmt(totalReceived)}</div>
-          <span class="stat-trend-sub">Inventory purchases recorded</span>
-        </div>
-      </div>
+    <!-- Sub-Tabs Switcher (GRN Inward vs Supplier Returns) -->
+    <div class="theme-switch-pill" style="margin-bottom:18px; padding:4px; height:auto; gap:6px; display:inline-flex;">
+      <button type="button" class="theme-switch-btn active" id="tabBtnGrnInward" style="padding:8px 18px; font-size:13px; font-weight:700;">
+        📦 Goods Inward (GRN) (${grns.length})
+      </button>
+      <button type="button" class="theme-switch-btn" id="tabBtnSuppReturns" style="padding:8px 18px; font-size:13px; font-weight:700;">
+        🚚 Supplier Returns (Debit Notes) (${suppReturns.length})
+      </button>
     </div>
 
-    <div class="table-card" id="grnTbl"></div>
+    <!-- KPI Summary Row -->
+    <div id="grnKpiRow" class="top-stats-row" style="margin-bottom:20px;"></div>
+
+    <!-- Content Table Container -->
+    <div class="table-card" id="grnTableWrap"></div>
   `;
 
-  const drawGrnTable = () => {
+  const renderView = () => {
     const q = ($('#grnSearch').value || '').toLowerCase();
-    const rows = grns.filter(g => (g.GrnNo + g.Supplier + (g.InvoiceRef || '')).toLowerCase().includes(q));
 
-    $('#grnTbl').innerHTML = `
-      <table>
+    if (activeSubTab === 'grn') {
+      $('#grnKpiRow').innerHTML = `
+        <div class="fin-stat-card">
+          <div class="stat-text-col">
+            <span class="stat-label-title">Total GRN Shipments</span>
+            <div class="stat-main-number purple">${grns.length}</div>
+            <span class="stat-trend-sub">Completed inward supplier receipts</span>
+          </div>
+        </div>
+        <div class="fin-stat-card">
+          <div class="stat-text-col">
+            <span class="stat-label-title">Total Purchases Value</span>
+            <div class="stat-main-number green">${fmt(totalReceived)}</div>
+            <span class="stat-trend-sub">Total inventory cost received</span>
+          </div>
+        </div>
+      `;
+
+      const rows = grns.filter(g => (g.GrnNo + g.Supplier + (g.InvoiceRef || '')).toLowerCase().includes(q));
+
+      $('#grnTableWrap').innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>${t('grnNo')}</th>
+              <th>${t('supplier')}</th>
+              <th>${t('invoiceRef')}</th>
+              <th>${t('totalCost')}</th>
+              <th>${t('itemsCount')}</th>
+              <th>${t('receivedBy')}</th>
+              <th>${t('createdAt')}</th>
+              <th style="text-align:right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(g => `
+              <tr>
+                <td><b>${esc(g.GrnNo)}</b></td>
+                <td><span class="pill info">${esc(g.Supplier)}</span></td>
+                <td><code class="muted">${esc(g.InvoiceRef || '—')}</code></td>
+                <td><b>${fmt(g.TotalCost)}</b></td>
+                <td>${g.ItemCount} items (${g.TotalQty} units)</td>
+                <td><small class="muted">${esc(g.ReceivedBy)}</small></td>
+                <td><small class="muted">${fd(g.CreatedAt)}</small></td>
+                <td style="text-align:right;">
+                  <button class="btn btn-sm btn-ghost" data-view-grn="${g.Id}">${t('viewGrn')}</button>
+                </td>
+              </tr>
+            `).join('') || `<tr><td colspan="8" class="muted" style="text-align:center; padding:32px;">${t('noData')}</td></tr>`}
+          </tbody>
+        </table>
+      `;
+    } else {
+      $('#grnKpiRow').innerHTML = `
+        <div class="fin-stat-card" style="border-left:4px solid var(--bad);">
+          <div class="stat-text-col">
+            <span class="stat-label-title">Supplier Debit Notes Issued</span>
+            <div class="stat-main-number" style="color:var(--bad);">${suppReturns.length}</div>
+            <span class="stat-trend-sub">Damaged, expired or returned stock</span>
+          </div>
+        </div>
+        <div class="fin-stat-card" style="border-left:4px solid var(--bad);">
+          <div class="stat-text-col">
+            <span class="stat-label-title">Total Debited Value</span>
+            <div class="stat-main-number" style="color:var(--bad);">${fmt(totalDebited)}</div>
+            <span class="stat-trend-sub">Debited from supplier ledgers</span>
+          </div>
+        </div>
+      `;
+
+      const rows = suppReturns.filter(r => (r.ReturnNo + r.Supplier + (r.GrnNo || '') + (r.Reason || '')).toLowerCase().includes(q));
+
+      $('#grnTableWrap').innerHTML = `
+        <table>
+          <thead>
+            <tr>
+              <th>Debit Note #</th>
+              <th>${t('supplier')}</th>
+              <th>GRN Reference</th>
+              <th>Reason</th>
+              <th>Items Returned</th>
+              <th>Total Debit Amount</th>
+              <th>${t('returnedBy')}</th>
+              <th>Date</th>
+              <th style="text-align:right;">Action</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${rows.map(r => `
+              <tr>
+                <td><b style="color:var(--bad); font-family:monospace;">${esc(r.ReturnNo)}</b></td>
+                <td><b>${esc(r.Supplier)}</b></td>
+                <td><code class="muted">${esc(r.GrnNo || 'Direct')}</code></td>
+                <td><span class="small muted">${esc(r.Reason || 'Vendor Return')}</span></td>
+                <td><span class="pill warn">${r.ItemCount} items (${r.TotalQty} units)</span></td>
+                <td><b style="color:var(--bad); font-size:13.5px;">${fmt(r.TotalDebit)}</b></td>
+                <td><small class="muted">${esc(r.ReturnedBy)}</small></td>
+                <td><small class="muted">${fd(r.CreatedAt)}</small></td>
+                <td style="text-align:right;">
+                  <button class="btn btn-sm btn-ghost" data-view-supp-ret="${r.Id}">👁️ View Debit Note</button>
+                </td>
+              </tr>
+            `).join('') || `<tr><td colspan="9" class="muted" style="text-align:center; padding:32px;">No supplier returns recorded yet.</td></tr>`}
+          </tbody>
+        </table>
+      `;
+    }
+  };
+
+  renderView();
+
+  $('#tabBtnGrnInward').onclick = () => {
+    activeSubTab = 'grn';
+    $('#tabBtnGrnInward').classList.add('active');
+    $('#tabBtnSuppReturns').classList.remove('active');
+    $('#tabBtnSuppReturns').style.background = '';
+    $('#tabBtnSuppReturns').style.color = '';
+    renderView();
+  };
+
+  $('#tabBtnSuppReturns').onclick = () => {
+    activeSubTab = 'returns';
+    $('#tabBtnSuppReturns').classList.add('active');
+    $('#tabBtnSuppReturns').style.background = 'var(--bad)';
+    $('#tabBtnSuppReturns').style.color = '#fff';
+    $('#tabBtnGrnInward').classList.remove('active');
+    renderView();
+  };
+
+  $('#grnSearch').oninput = renderView;
+  $('#btnNewGrn').onclick = () => showNewGrnModal();
+  $('#btnSupplierReturn').onclick = () => showNewSupplierReturnModal();
+
+  $('#grnTableWrap').onclick = async e => {
+    const btnGrn = e.target.closest('[data-view-grn]');
+    if (btnGrn) return showGrnDetailsModal(+btnGrn.dataset.viewGrn);
+
+    const btnRet = e.target.closest('[data-view-supp-ret]');
+    if (btnRet) return showSupplierReturnDetailsModal(+btnRet.dataset.viewSuppRet);
+  };
+}
+
+/* ==========================================================================
+   SUPPLIER RETURN / DEBIT NOTE THERMAL & STANDARD PRINTER
+   ========================================================================== */
+function renderSupplierDebitNoteHtml(ret, cfg = {}) {
+  const shopName = cfg.shopName || 'AMECTAR BOOKSHOP & COMMUNICATION';
+  const shopAddress = cfg.shopAddress || 'No. 45, Station Road, Colombo';
+  const shopPhone = cfg.shopPhone || 'Tel: 071 234 5678 / 011 234 5678';
+  const paperWidth = cfg.receiptPaperWidth === '58mm' ? '280px' : '320px';
+
+  const items = Array.isArray(ret.items) ? ret.items : [];
+  const tot = +(ret.totalDebit || 0);
+
+  return `
+    <div class="thermal-receipt-paper" style="width:${paperWidth}; font-family:'Courier New', monospace; padding:10px; color:#000;">
+      <div class="tr-header" style="text-align:center;">
+        <h2 class="tr-shop-name" style="margin:0; font-size:16px; font-weight:900;">${esc(shopName)}</h2>
+        ${shopAddress ? `<div class="tr-contact" style="font-size:10px; margin-top:2px;">${esc(shopAddress)}</div>` : ''}
+        ${shopPhone ? `<div class="tr-contact" style="font-size:10px;">${esc(shopPhone)}</div>` : ''}
+        <div style="font-weight:900; font-size:11px; margin-top:6px; letter-spacing:0.8px; border:2px solid #000; padding:3px 6px; display:inline-block;">
+          *** SUPPLIER DEBIT NOTE (RTV) ***
+        </div>
+      </div>
+
+      <hr class="tr-divider-double" style="border-top:2px dashed #000; margin:8px 0;">
+
+      <div class="tr-meta-row" style="display:flex; justify-content:space-between; font-size:11px;">
+        <span><b>DEBIT NOTE:</b> ${esc(ret.returnNo)}</span>
+        <span><b>GRN REF:</b> ${esc(ret.grnNo || 'DIRECT')}</span>
+      </div>
+      <div class="tr-meta-row" style="font-size:11px; margin-top:2px;">
+        <span><b>SUPPLIER:</b> ${esc(ret.supplier)}</span>
+      </div>
+      <div class="tr-meta-row" style="display:flex; justify-content:space-between; font-size:11px; margin-top:2px;">
+        <span><b>DATE:</b> ${new Date(ret.createdAt || Date.now()).toLocaleDateString()}</span>
+        <span><b>TIME:</b> ${new Date(ret.createdAt || Date.now()).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>
+      </div>
+      <div class="tr-meta-row" style="font-size:11px; margin-top:2px;">
+        <span><b>RETURNED BY:</b> ${esc(ret.returnedBy || session?.fullName || 'Manager')}</span>
+      </div>
+      <div class="tr-meta-row" style="font-size:11px; margin-top:2px;">
+        <span><b>REASON:</b> ${esc(ret.reason || 'Vendor Return')}</span>
+      </div>
+
+      <hr class="tr-divider-dashed" style="border-top:1px dashed #000; margin:8px 0;">
+
+      <table class="tr-table" style="width:100%; border-collapse:collapse; font-size:11px;">
         <thead>
-          <tr>
-            <th>${t('grnNo')}</th>
-            <th>${t('supplier')}</th>
-            <th>${t('invoiceRef')}</th>
-            <th>${t('totalCost')}</th>
-            <th>${t('itemsCount')}</th>
-            <th>${t('receivedBy')}</th>
-            <th>${t('createdAt')}</th>
-            <th style="text-align:right;">Action</th>
+          <tr style="border-bottom:1px solid #000;">
+            <th style="text-align:left; width:48%; padding:3px 0;">ITEM</th>
+            <th style="text-align:center; width:14%; padding:3px 0;">QTY</th>
+            <th style="text-align:right; width:18%; padding:3px 0;">COST</th>
+            <th style="text-align:right; width:20%; padding:3px 0;">DEBIT</th>
           </tr>
         </thead>
         <tbody>
-          ${rows.map(g => `
+          ${items.map(it => `
             <tr>
-              <td><b>${esc(g.GrnNo)}</b></td>
-              <td><span class="pill info">${esc(g.Supplier)}</span></td>
-              <td><code class="muted">${esc(g.InvoiceRef || '—')}</code></td>
-              <td><b>${fmt(g.TotalCost)}</b></td>
-              <td>${g.ItemCount} items (${g.TotalQty} units)</td>
-              <td><small class="muted">${esc(g.ReceivedBy)}</small></td>
-              <td><small class="muted">${fd(g.CreatedAt)}</small></td>
-              <td style="text-align:right;">
-                <button class="btn btn-sm btn-ghost" data-view="${g.Id}">${t('viewGrn')}</button>
+              <td style="padding:4px 0;">
+                <div style="font-weight:700;">${esc(it.itemName)}</div>
+                ${it.batchNo ? `<div style="font-size:9px; opacity:0.8;">Batch: ${esc(it.batchNo)}</div>` : ''}
               </td>
+              <td style="text-align:center; padding:4px 0;">${it.qty}</td>
+              <td style="text-align:right; padding:4px 0;">${Number(it.unitCost).toFixed(2)}</td>
+              <td style="text-align:right; font-weight:800; padding:4px 0;">${Number(it.lineTotal).toFixed(2)}</td>
             </tr>
-          `).join('') || `<tr><td colspan="8" class="muted" style="text-align:center; padding:30px;">${t('noData')}</td></tr>`}
+          `).join('')}
         </tbody>
       </table>
-    `;
+
+      <hr class="tr-divider-dashed" style="border-top:1px dashed #000; margin:8px 0;">
+
+      <div style="display:flex; justify-content:space-between; align-items:center; font-size:13.5px; font-weight:900; padding:4px 0;">
+        <span>TOTAL DEBIT AMOUNT:</span>
+        <span>LKR ${tot.toFixed(2)}</span>
+      </div>
+
+      <hr class="tr-divider-double" style="border-top:2px dashed #000; margin:8px 0;">
+
+      <div style="margin-top:14px; font-size:10px;">
+        <div style="margin-bottom:18px;">
+          <div><b>Store Manager Signature:</b></div>
+          <div style="margin-top:16px; border-bottom:1px solid #000; width:70%;"></div>
+        </div>
+        <div>
+          <div><b>Supplier / Driver Signature:</b></div>
+          <div style="margin-top:16px; border-bottom:1px solid #000; width:70%;"></div>
+        </div>
+      </div>
+
+      <div class="tr-footer" style="text-align:center; font-size:10px; margin-top:14px; color:#555;">
+        Official Debit Note for Stock Adjustment & Supplier Ledger
+      </div>
+    </div>
+  `;
+}
+
+/* ==========================================================================
+   SUPPLIER RETURN DETAILS MODAL
+   ========================================================================== */
+async function showSupplierReturnDetailsModal(returnId) {
+  try {
+    const { return: ret, items } = await call('supplierReturns:get', { id: returnId });
+    const m = modal(`
+      <div class="modal-header">
+        <div>
+          <h3 class="modal-title" style="color:var(--bad);">Debit Note ${esc(ret.ReturnNo)}</h3>
+          <small class="muted">${esc(ret.Supplier)} · ${fd(ret.CreatedAt)}</small>
+        </div>
+        <button class="modal-close-x" data-x>✕</button>
+      </div>
+
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; font-size:12.5px; margin: 12px 0; background:var(--bg-card-subtle); padding:12px; border-radius:10px;">
+        <div><b>Supplier:</b> ${esc(ret.Supplier)}</div>
+        <div><b>Linked GRN:</b> ${esc(ret.GrnNo || 'Direct Return')}</div>
+        <div><b>Returned By:</b> ${esc(ret.ReturnedBy)}</div>
+        <div><b>Total Debited:</b> <span style="color:var(--bad); font-weight:900; font-size:14px;">${fmt(ret.TotalDebit)}</span></div>
+        <div><b>Reason:</b> ${esc(ret.Reason || 'Vendor Return')}</div>
+        ${ret.Notes ? `<div style="grid-column:1/-1;"><b>Notes:</b> ${esc(ret.Notes)}</div>` : ''}
+      </div>
+
+      <table style="width:100%; border:1px solid var(--border-card); border-radius:12px; margin-top:8px;">
+        <thead>
+          <tr>
+            <th>Item Name</th>
+            <th style="width:70px;">Qty</th>
+            <th style="width:100px;">Unit Cost</th>
+            <th style="width:100px;">Batch / Lot</th>
+            <th style="width:120px;">Reason</th>
+            <th style="text-align:right; width:110px;">Line Total</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${items.map(it => `
+            <tr>
+              <td><b>${esc(it.ItemName)}</b></td>
+              <td><b>${it.Qty}</b></td>
+              <td>${fmt(it.UnitCost)}</td>
+              <td><code>${esc(it.BatchNo || '—')}</code></td>
+              <td><span class="small muted">${esc(it.Reason || '—')}</span></td>
+              <td style="text-align:right;"><b style="color:var(--bad);">${fmt(it.LineTotal)}</b></td>
+            </tr>
+          `).join('')}
+        </tbody>
+      </table>
+
+      <div class="modal-actions" style="margin-top:16px;">
+        <button class="btn btn-ghost" data-x>${t('close')}</button>
+        <button class="btn btn-primary" id="btnPrintDebitNote">🖨️ Print Debit Note</button>
+      </div>
+    `, true);
+
+    m.querySelectorAll('[data-x]').forEach(el => el.onclick = () => el.closest('.modal-backdrop').remove());
+
+    m.querySelector('#btnPrintDebitNote').onclick = () => {
+      const container = document.getElementById('printableReceiptArea');
+      if (container) {
+        container.innerHTML = renderSupplierDebitNoteHtml({
+          returnNo: ret.ReturnNo,
+          grnNo: ret.GrnNo,
+          supplier: ret.Supplier,
+          createdAt: ret.CreatedAt,
+          returnedBy: ret.ReturnedBy,
+          reason: ret.Reason,
+          totalDebit: ret.TotalDebit,
+          items: items.map(it => ({
+            itemName: it.ItemName,
+            qty: it.Qty,
+            unitCost: it.UnitCost,
+            lineTotal: it.LineTotal,
+            batchNo: it.BatchNo
+          }))
+        });
+        window.print();
+      }
+    };
+  } catch (err) {
+    toast(err.message, 1);
+  }
+}
+
+/* ==========================================================================
+   NEW SUPPLIER RETURN MODAL (DEBIT NOTE & STOCK DEDUCTION)
+   ========================================================================== */
+async function showNewSupplierReturnModal(preselectedGrn = null) {
+  const catalog = await call('items:list');
+  const physicalItems = catalog.filter(it => it.Active && !it.IsService);
+  if (!physicalItems.length) return toast('No physical items in inventory to return', 1);
+
+  const pad = n => String(n).padStart(2, '0');
+  const d = new Date();
+  const defaultRetNo = `SRT-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${Math.floor(100 + Math.random()*900)}`;
+
+  let returnRows = [];
+
+  let supplierName = preselectedGrn?.supplier || '';
+  let linkedGrnNo = preselectedGrn?.grnNo || '';
+  let linkedGrnId = preselectedGrn?.grnId || null;
+
+  if (preselectedGrn && Array.isArray(preselectedGrn.items)) {
+    returnRows = preselectedGrn.items.map(it => {
+      const liveItem = catalog.find(p => p.Id === it.ItemId);
+      const stock = liveItem ? liveItem.Stock : it.Qty;
+      return {
+        itemId: it.ItemId,
+        name: it.ItemName,
+        currentStock: stock,
+        qty: Math.min(stock, it.Qty) || 1,
+        unitCost: it.UnitCost,
+        batchNo: it.BatchNo || '',
+        reason: 'Damaged / Defective Goods'
+      };
+    }).filter(r => r.currentStock > 0);
+  }
+
+  if (!returnRows.length && physicalItems.length) {
+    returnRows.push({
+      itemId: physicalItems[0].Id,
+      name: physicalItems[0].Name,
+      currentStock: physicalItems[0].Stock,
+      qty: 1,
+      unitCost: Math.round(physicalItems[0].Price * 0.75),
+      batchNo: '',
+      reason: 'Damaged / Defective Goods'
+    });
+  }
+
+  const m = modal(`
+    <div class="modal-header">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:24px;">🚚</span>
+        <div>
+          <h3 class="modal-title">${t('newSupplierReturn')}</h3>
+          <small class="muted">Return damaged, expired or defective stock back to vendor & deduct inventory</small>
+        </div>
+      </div>
+      <button class="modal-close-x" data-x>✕</button>
+    </div>
+
+    <form id="suppReturnForm" style="margin-top:14px; display:flex; flex-direction:column; gap:14px;">
+      <div style="display:grid; grid-template-columns: 1fr 1fr 1fr; gap:12px;">
+        <label class="field-wrap">
+          <span class="field-label">Debit Note / Return Number *</span>
+          <input name="returnNo" value="${defaultRetNo}" required style="font-family:monospace; font-weight:700;">
+        </label>
+        <label class="field-wrap">
+          <span class="field-label">Supplier / Vendor Name *</span>
+          <input name="supplier" value="${esc(supplierName)}" placeholder="e.g. Atlas Axillia, Richard Trading" required>
+        </label>
+        <label class="field-wrap">
+          <span class="field-label">Linked GRN Number (Optional)</span>
+          <input name="grnNo" value="${esc(linkedGrnNo)}" placeholder="e.g. GRN-20261025-01">
+        </label>
+      </div>
+
+      <div style="display:grid; grid-template-columns: 1fr 2fr; gap:12px;">
+        <label class="field-wrap">
+          <span class="field-label">Primary Return Reason</span>
+          <select name="reason" id="suppGeneralReason">
+            <option value="Damaged / Defective Goods">Damaged / Defective Goods (හානි වූ භාණ්ඩ)</option>
+            <option value="Expired / Old Stock">Expired / Old Stock (කල් ඉකුත් වූ තොග)</option>
+            <option value="Printing / Binding Defect">Printing / Binding Defect (මුද්‍රණ / බයින්ඩින් දෝෂ)</option>
+            <option value="Wrong Item Delivered by Supplier">Wrong Item Delivered by Supplier (වැරදි භාණ්ඩයක් එවීම)</option>
+            <option value="Overstock Return">Overstock Return (අතිරික්ත තොග ආපසු යැවීම)</option>
+            <option value="Other">Other Reason (වෙනත්)</option>
+          </select>
+        </label>
+        <label class="field-wrap">
+          <span class="field-label">Notes / Instructions</span>
+          <input name="notes" placeholder="Credit note reference or driver transport notes…">
+        </label>
+      </div>
+
+      <!-- Return Items Table -->
+      <div style="border:1px solid var(--border); border-radius:12px; overflow:hidden;">
+        <div style="padding:10px 14px; background:var(--bg-input); display:flex; justify-content:space-between; align-items:center;">
+          <b style="font-size:13px;">Items to Return to Supplier</b>
+          <button type="button" class="btn btn-xs btn-primary" id="btnAddSuppRetRow">+ Add Another Product</button>
+        </div>
+        <div style="max-height:260px; overflow-y:auto;">
+          <table style="width:100%; border-collapse:collapse; font-size:12.5px;">
+            <thead>
+              <tr style="background:var(--bg-card-subtle);">
+                <th style="padding:8px 10px;">Product Name</th>
+                <th style="width:80px; padding:8px 10px;">Stock</th>
+                <th style="width:95px; padding:8px 10px;">Return Qty</th>
+                <th style="width:110px; padding:8px 10px;">Unit Cost</th>
+                <th style="width:100px; padding:8px 10px;">Batch / Lot</th>
+                <th style="width:110px; text-align:right; padding:8px 10px;">Total Debit</th>
+                <th style="width:40px; padding:8px 10px;"></th>
+              </tr>
+            </thead>
+            <tbody id="suppRetTableBody"></tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Total Debit Footer Banner -->
+      <div style="display:flex; justify-content:space-between; align-items:center; padding:12px 18px; border-radius:12px; background:radial-gradient(ellipse at top left, rgba(239,68,68,0.1), transparent 70%); border:1px solid rgba(239,68,68,0.3);">
+        <div>
+          <span class="muted small" style="text-transform:uppercase; font-weight:800; font-size:11px;">Total Debit Note Value</span>
+          <h2 id="suppRetTotalDisplay" style="margin:2px 0 0; color:var(--bad); font-size:22px; font-weight:900;">LKR 0.00</h2>
+        </div>
+        <div class="modal-actions" style="margin:0;">
+          <button type="button" class="btn btn-ghost" data-x>${t('cancel')}</button>
+          <button type="submit" class="btn btn-primary" id="btnSubmitSuppRet" style="background:var(--bad); border:none; box-shadow:0 4px 12px rgba(239,68,68,0.3); font-weight:800;">
+            🚚 Issue Debit Note & Deduct Stock
+          </button>
+        </div>
+      </div>
+    </form>
+  `, true);
+
+  m.querySelectorAll('[data-x]').forEach(el => el.onclick = m.close);
+
+  const recalculateTotal = () => {
+    let tot = 0;
+    returnRows.forEach(r => {
+      tot += (r.qty * r.unitCost);
+    });
+    m.querySelector('#suppRetTotalDisplay').textContent = fmt(tot);
+    return tot;
   };
 
-  drawGrnTable();
-  $('#grnSearch').oninput = drawGrnTable;
-  $('#btnNewGrn').onclick = () => showNewGrnModal();
-  $('#grnTbl').onclick = async e => {
-    const b = e.target.closest('[data-view]');
-    if (!b) return;
-    showGrnDetailsModal(+b.dataset.view);
+  const renderTableRows = () => {
+    const tbody = m.querySelector('#suppRetTableBody');
+    if (!returnRows.length) {
+      tbody.innerHTML = `<tr><td colspan="7" class="muted" style="text-align:center; padding:24px;">No items selected. Click "+ Add Another Product" above.</td></tr>`;
+      recalculateTotal();
+      return;
+    }
+
+    tbody.innerHTML = returnRows.map((r, idx) => `
+      <tr data-row="${idx}">
+        <td style="padding:6px 10px;">
+          <select class="sr-item-select" data-idx="${idx}" style="width:100%; font-size:12px; font-weight:700;">
+            ${physicalItems.map(p => `<option value="${p.Id}" ${p.Id === r.itemId ? 'selected' : ''}>${esc(p.Name)} (Stock: ${p.Stock})</option>`).join('')}
+          </select>
+        </td>
+        <td style="padding:6px 10px;">
+          <b class="sr-stock-disp" style="font-size:12.5px;">${r.currentStock}</b>
+        </td>
+        <td style="padding:6px 10px;">
+          <input type="number" class="sr-qty-inp" data-idx="${idx}" min="1" max="${r.currentStock}" value="${r.qty}" style="width:75px; padding:4px 6px; font-weight:800;">
+        </td>
+        <td style="padding:6px 10px;">
+          <input type="number" step="0.5" class="sr-cost-inp" data-idx="${idx}" min="0" value="${r.unitCost}" style="width:90px; padding:4px 6px; font-weight:700;">
+        </td>
+        <td style="padding:6px 10px;">
+          <input type="text" class="sr-batch-inp" data-idx="${idx}" value="${esc(r.batchNo)}" placeholder="Lot/Batch" style="width:85px; padding:4px 6px; font-size:11px;">
+        </td>
+        <td style="padding:6px 10px; text-align:right; font-weight:800; color:var(--bad);">
+          ${fmt(r.qty * r.unitCost)}
+        </td>
+        <td style="padding:6px 10px; text-align:center;">
+          <button type="button" class="btn btn-xs btn-ghost btn-del-row" data-idx="${idx}" style="color:var(--bad);">✕</button>
+        </td>
+      </tr>
+    `).join('');
+
+    // Wire inputs
+    tbody.querySelectorAll('.sr-item-select').forEach(sel => {
+      sel.onchange = () => {
+        const idx = +sel.dataset.idx;
+        const it = physicalItems.find(p => p.Id === +sel.value);
+        if (it) {
+          returnRows[idx].itemId = it.Id;
+          returnRows[idx].name = it.Name;
+          returnRows[idx].currentStock = it.Stock;
+          returnRows[idx].unitCost = Math.round(it.Price * 0.75);
+          if (returnRows[idx].qty > it.Stock) returnRows[idx].qty = Math.max(1, it.Stock);
+          renderTableRows();
+        }
+      };
+    });
+
+    tbody.querySelectorAll('.sr-qty-inp').forEach(inp => {
+      inp.oninput = () => {
+        const idx = +inp.dataset.idx;
+        let val = parseInt(inp.value) || 1;
+        if (val > returnRows[idx].currentStock) {
+          val = returnRows[idx].currentStock;
+          inp.value = val;
+          toast(`Cannot return more than available stock (${returnRows[idx].currentStock})`, 1);
+        }
+        if (val < 1) { val = 1; inp.value = 1; }
+        returnRows[idx].qty = val;
+        recalculateTotal();
+        const tr = inp.closest('tr');
+        if (tr) tr.querySelectorAll('td')[5].textContent = fmt(returnRows[idx].qty * returnRows[idx].unitCost);
+      };
+    });
+
+    tbody.querySelectorAll('.sr-cost-inp').forEach(inp => {
+      inp.oninput = () => {
+        const idx = +inp.dataset.idx;
+        returnRows[idx].unitCost = Math.max(0, parseFloat(inp.value) || 0);
+        recalculateTotal();
+        const tr = inp.closest('tr');
+        if (tr) tr.querySelectorAll('td')[5].textContent = fmt(returnRows[idx].qty * returnRows[idx].unitCost);
+      };
+    });
+
+    tbody.querySelectorAll('.sr-batch-inp').forEach(inp => {
+      inp.oninput = () => {
+        const idx = +inp.dataset.idx;
+        returnRows[idx].batchNo = inp.value;
+      };
+    });
+
+    tbody.querySelectorAll('.btn-del-row').forEach(btn => {
+      btn.onclick = () => {
+        returnRows.splice(+btn.dataset.idx, 1);
+        renderTableRows();
+      };
+    });
+
+    recalculateTotal();
+  };
+
+  m.querySelector('#btnAddSuppRetRow').onclick = () => {
+    if (physicalItems.length) {
+      returnRows.push({
+        itemId: physicalItems[0].Id,
+        name: physicalItems[0].Name,
+        currentStock: physicalItems[0].Stock,
+        qty: 1,
+        unitCost: Math.round(physicalItems[0].Price * 0.75),
+        batchNo: '',
+        reason: 'Damaged / Defective Goods'
+      });
+      renderTableRows();
+    }
+  };
+
+  renderTableRows();
+
+  m.querySelector('#suppReturnForm').onsubmit = async e => {
+    e.preventDefault();
+    if (!returnRows.length) return toast('Please select at least one item to return', 1);
+
+    const fd = new FormData(e.target);
+    const supplier = fd.get('supplier')?.trim();
+    if (!supplier) return toast('Supplier name is required', 1);
+
+    const btn = m.querySelector('#btnSubmitSuppRet');
+    btn.disabled = true;
+    btn.textContent = 'Processing Return…';
+
+    try {
+      const res = await call('supplierReturns:create', {
+        returnNo: fd.get('returnNo'),
+        grnId: linkedGrnId,
+        grnNo: fd.get('grnNo'),
+        supplier,
+        reason: fd.get('reason'),
+        notes: fd.get('notes'),
+        items: returnRows.map(r => ({
+          itemId: r.itemId,
+          qty: r.qty,
+          unitCost: r.unitCost,
+          batchNo: r.batchNo,
+          reason: fd.get('reason')
+        }))
+      });
+
+      m.close();
+      toast(t('supplierReturnSuccess') + ` (${res.returnNo})`);
+
+      // Refresh catalog and GRN view
+      try {
+        items = await call('items:list');
+      } catch {}
+      vGrn();
+
+      // Print Debit Note Voucher
+      const printContainer = document.getElementById('printableReceiptArea');
+      if (printContainer) {
+        printContainer.innerHTML = renderSupplierDebitNoteHtml(res, res.shopSettings);
+        window.print();
+      }
+    } catch (err) {
+      toast(err.message, 1);
+      btn.disabled = false;
+      btn.textContent = '🚚 Issue Debit Note & Deduct Stock';
+    }
   };
 }
 
 async function showGrnDetailsModal(grnId) {
   try {
     const { grn, items } = await call('grn:get', { id: grnId });
-    modal(`
+    const m = modal(`
       <div class="modal-header">
         <div>
           <h3 class="modal-title">${esc(grn.GrnNo)}</h3>
@@ -3713,9 +4884,27 @@ async function showGrnDetailsModal(grnId) {
 
       <div class="modal-actions" style="margin-top:16px;">
         <button class="btn btn-ghost" data-x>${t('close')}</button>
+        <button class="btn btn-secondary" id="btnReturnFromGrn" style="color:var(--bad); border:1px solid rgba(239,68,68,0.3); font-weight:700;">
+          ↩️ Return to Supplier (Debit Note)
+        </button>
         <button class="btn btn-primary" onclick="window.print()">${t('print')}</button>
       </div>
-    `, true).querySelectorAll('[data-x]').forEach(el => el.onclick = () => el.closest('.modal-backdrop').remove());
+    `, true);
+
+    m.querySelectorAll('[data-x]').forEach(el => el.onclick = () => el.closest('.modal-backdrop').remove());
+
+    const btnRet = m.querySelector('#btnReturnFromGrn');
+    if (btnRet) {
+      btnRet.onclick = () => {
+        m.close();
+        showNewSupplierReturnModal({
+          grnId: grn.Id,
+          grnNo: grn.GrnNo,
+          supplier: grn.Supplier,
+          items: items
+        });
+      };
+    }
   } catch (err) {
     toast(err.message, 1);
   }
@@ -3992,50 +5181,265 @@ async function showNewGrnModal() {
 }
 
 /* ==========================================================================
-   VIEW 5: REPORTS & ANALYTICS
+   VIEW 5: REPORTS & ADVANCED BUSINESS INTELLIGENCE
    ========================================================================== */
 const REPORTS = {
-  daily: ['daily', () => [[t('date'), r => r.Day], [t('bills'), r => r.Bills], [t('total'), r => fmt(r.Total)]]],
-  items: ['itemwise', () => [[t('item'), r => esc(r.Item)], [t('qtySold'), r => r.Qty], [t('total'), r => fmt(r.Total)]]],
-  cashiers: ['cashierwise', () => [[t('cashier'), r => esc(r.Cashier)], [t('bills'), r => r.Bills], [t('total'), r => fmt(r.Total)]]]
+  daily: [
+    'daily',
+    () => [
+      [t('date'), r => `<b style="font-size:13px;">${r.Day}</b>`],
+      [t('bills'), r => `<span class="pill info">${r.Bills} bills</span>`],
+      ['Gross Sales', r => fmt(+r.Total + (+r.Discount || 0))],
+      ['Discounts', r => +r.Discount ? `<span style="color:var(--bad);">- ${fmt(r.Discount)}</span>` : '—'],
+      ['Net Revenue', r => `<b style="color:var(--brand); font-size:14px;">${fmt(r.Total)}</b>`]
+    ]
+  ],
+  items: [
+    'itemwise',
+    () => [
+      [t('item'), r => `<b>${esc(r.Item)}</b>`],
+      ['Category', r => `<span class="pill info">${esc(r.Category || 'General')}</span>`],
+      [t('qtySold'), r => `<b>${r.Qty} units</b>`],
+      ['Total Sales', r => `<b style="color:var(--brand);">${fmt(r.Total)}</b>`]
+    ]
+  ],
+  cashiers: [
+    'cashierwise',
+    () => [
+      [t('cashier'), r => `<b>${esc(r.Cashier)}</b>`],
+      [t('bills'), r => `<span class="pill info">${r.Bills} bills</span>`],
+      ['Avg Ticket (AOV)', r => fmt(r.AOV || (r.Bills ? r.Total / r.Bills : 0))],
+      ['Total Collected', r => `<b style="color:var(--brand); font-size:14px;">${fmt(r.Total)}</b>`]
+    ]
+  ],
+  grn: [
+    'grnReport',
+    () => [
+      ['GRN Number', r => `<b style="color:var(--brand); font-family:monospace;">${esc(r.GrnNo)}</b>`],
+      ['Supplier / Vendor', r => `<b>${esc(r.Supplier)}</b>`],
+      ['Invoice / Ref', r => `<code style="font-size:11.5px;">${esc(r.InvoiceRef)}</code>`],
+      ['Items Received', r => `<span class="pill ok">${r.ItemsCount} items (${r.TotalQty} units)</span>`],
+      ['Received By', r => `<span class="small muted">${esc(r.ReceivedBy)}</span>`],
+      [t('date'), r => r.Day],
+      ['Total Purchase Cost', r => `<b style="font-size:13.5px;">${fmt(r.Total)}</b>`]
+    ]
+  ],
+  grn_items: [
+    'grnItemsReport',
+    () => [
+      ['Item Received', r => `<b>${esc(r.Item)}</b>`],
+      ['Supplier', r => esc(r.Supplier)],
+      ['GRN Ref', r => `<code style="font-size:11px;">${esc(r.GrnNo)}</code>`],
+      ['Batch & Expiry', r => `<span class="small muted">${esc(r.BatchNo)} · ${esc(r.ExpiryDate)}</span>`],
+      ['Units', r => `<b>${r.Qty}</b>`],
+      ['Unit Cost', r => fmt(r.UnitCost)],
+      [t('date'), r => r.Day],
+      ['Line Total', r => `<b style="font-size:13px;">${fmt(r.Total)}</b>`]
+    ]
+  ],
+  returns: [
+    'returnsReport',
+    () => [
+      ['Return Voucher', r => `<b style="color:var(--bad); font-family:monospace;">${esc(r.ReturnNo)}</b>`],
+      ['Original Invoice', r => `<span class="pill info">${esc(r.InvoiceNo)}</span>`],
+      ['Cashier', r => esc(r.Cashier)],
+      ['Refund Method', r => `<span class="pill ${r.Method === 'Card' ? 'info' : 'ok'}">${esc(r.Method)}</span>`],
+      ['Return Reason', r => `<span class="small muted">${esc(r.Reason)}</span>`],
+      ['Returned Units', r => `${r.ItemsCount} items (${r.TotalQty} units)`],
+      [t('date'), r => r.Day],
+      ['Refund Amount', r => `<b style="color:var(--bad); font-size:13.5px;">${fmt(r.Total)}</b>`]
+    ]
+  ],
+  supplier_returns: [
+    'reportSupplierReturns',
+    () => [
+      ['Debit Note #', r => `<b style="color:var(--brand); font-family:monospace;">${esc(r.ReturnNo)}</b>`],
+      ['Supplier / Vendor', r => `<b>${esc(r.Supplier)}</b>`],
+      ['GRN Ref', r => `<code style="font-size:11.5px;">${esc(r.GrnNo)}</code>`],
+      ['Return Reason', r => `<span class="small muted">${esc(r.Reason)}</span>`],
+      ['Returned By', r => `<span class="small muted">${esc(r.ReturnedBy)}</span>`],
+      ['Items Returned', r => `<span class="pill info">${r.ItemsCount} items (${r.TotalQty} units)</span>`],
+      [t('date'), r => r.Day],
+      ['Debit Total', r => `<b style="color:var(--brand); font-size:13.5px;">${fmt(r.Total)}</b>`]
+    ]
+  ],
+  supplier_return_items: [
+    'reportSupplierReturnItems',
+    () => [
+      ['Item Returned', r => `<b>${esc(r.Item)}</b>`],
+      ['Supplier', r => esc(r.Supplier)],
+      ['Debit Voucher', r => `<code style="font-size:11px;">${esc(r.ReturnNo)}</code>`],
+      ['Batch No', r => `<span class="small muted">${esc(r.BatchNo)}</span>`],
+      ['Reason', r => `<span class="small muted">${esc(r.Reason)}</span>`],
+      ['Units', r => `<b>${r.Qty}</b>`],
+      ['Unit Cost', r => fmt(r.UnitCost)],
+      [t('date'), r => r.Day],
+      ['Total Line Debit', r => `<b style="font-size:13px;">${fmt(r.Total)}</b>`]
+    ]
+  ],
+  categories: [
+    'categoryReport',
+    () => [
+      ['Product / Service Category', r => `<b style="font-size:13.5px;">${esc(r.Category)}</b>`],
+      ['Bills Count', r => `<span class="pill info">${r.Bills} bills</span>`],
+      ['Units Sold / Jobs', r => `<b>${r.Qty}</b>`],
+      ['Revenue Total', r => `<b style="color:var(--brand); font-size:14px;">${fmt(r.Total)}</b>`]
+    ]
+  ],
+  payments: [
+    'paymentReport',
+    () => [
+      ['Payment Method', r => `<b style="font-size:13.5px;">${esc(r.Method)}</b>`],
+      ['Transactions Count', r => `<span class="pill info">${r.Bills} transactions</span>`],
+      ['Total Collected', r => `<b style="color:var(--brand); font-size:14px;">${fmt(r.Total)}</b>`]
+    ]
+  ]
 };
 
 async function vReports() {
+  const getDaysAgo = n => {
+    const d = new Date(Date.now() - n * 864e5 - new Date().getTimezoneOffset() * 6e4);
+    return d.toISOString().slice(0, 10);
+  };
+  const getStartOfMonth = () => {
+    const now = new Date();
+    const d = new Date(now.getFullYear(), now.getMonth(), 1 - new Date().getTimezoneOffset() * 6e4 / 864e5);
+    return d.toISOString().slice(0, 10);
+  };
+
+  let currentRows = [];
+  let currentCols = [];
+  let currentReportKey = 'daily';
+
   $('#view').innerHTML = `
     <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:12px;">
       <div>
         <h2 style="margin:0; font-size:22px; font-weight:800;">${t('reports')}</h2>
-        <span class="muted small">Sales performance & cashier summaries</span>
+        <span class="muted small">Sales revenue, supplier GRN purchases, cashier rankings & returns</span>
       </div>
-      <div style="display:flex; gap:10px; align-items:center;">
-        <select id="rt" style="width:200px;">
-          ${Object.entries(REPORTS).map(([k, v]) => `<option value="${k}">${t(v[0])}</option>`).join('')}
-        </select>
-        <input id="f" type="date" value="${today()}" style="width:140px;">
-        <input id="t" type="date" value="${today()}" style="width:140px;">
-        <button class="btn btn-primary" id="run">${t('run')}</button>
+      <div style="display:flex; gap:10px; align-items:center; flex-wrap:wrap;">
+        <button class="btn btn-ghost" id="btnPrintReport">🖨️ ${t('printReport')}</button>
+        <button class="btn btn-secondary" id="btnExportCsv">📥 ${t('exportCsv')}</button>
       </div>
     </div>
+
+    <!-- Filters Panel -->
+    <div class="panel-card" style="margin-bottom:18px; padding:18px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+        <div style="min-width:280px; flex:1;">
+          <span class="field-label" style="display:block; margin-bottom:5px; font-size:11px; text-transform:uppercase; font-weight:800; letter-spacing:0.5px;">Select Report Type</span>
+          <select id="rt" style="width:100%; font-weight:700; font-size:13.5px; height:42px;">
+            <option value="daily">📊 Daily Sales & Revenue Breakdown</option>
+            <option value="items">📦 Item-wise Sales Breakdown</option>
+            <option value="cashiers">👨‍💼 Cashier Performance & AOV</option>
+            <option value="grn">🚚 GRN Supplier Receiving & Purchase Costs</option>
+            <option value="grn_items">📋 GRN Item Receiving Detail (Batch & Exp)</option>
+            <option value="returns">↩️ Customer Returns & Refunds Breakdown</option>
+            <option value="supplier_returns">📤 Supplier Returns & Debit Notes</option>
+            <option value="supplier_return_items">📋 Supplier Return Item Details</option>
+            <option value="categories">🏷️ Sales by Category & Service</option>
+            <option value="payments">💳 Payment Methods Split (Cash vs Card)</option>
+          </select>
+        </div>
+
+        <div>
+          <span class="field-label" style="display:block; margin-bottom:5px; font-size:11px; text-transform:uppercase; font-weight:800; letter-spacing:0.5px;">Quick Date Range</span>
+          <div style="display:flex; gap:6px; flex-wrap:wrap;">
+            <button type="button" class="btn btn-xs btn-ghost btn-q-range" data-range="today">Today</button>
+            <button type="button" class="btn btn-xs btn-ghost btn-q-range" data-range="yesterday">Yesterday</button>
+            <button type="button" class="btn btn-xs btn-ghost btn-q-range" data-range="week">7 Days</button>
+            <button type="button" class="btn btn-xs btn-ghost btn-q-range" data-range="month">This Month</button>
+            <button type="button" class="btn btn-xs btn-ghost btn-q-range" data-range="all">90 Days</button>
+          </div>
+        </div>
+
+        <div style="display:flex; gap:8px; align-items:flex-end;">
+          <div>
+            <span class="field-label" style="font-size:11px; text-transform:uppercase; font-weight:800;">${t('from')}</span>
+            <input id="f" type="date" value="${getStartOfMonth()}" style="height:42px; width:135px; font-weight:700;">
+          </div>
+          <div>
+            <span class="field-label" style="font-size:11px; text-transform:uppercase; font-weight:800;">${t('to')}</span>
+            <input id="t" type="date" value="${today()}" style="height:42px; width:135px; font-weight:700;">
+          </div>
+          <button class="btn btn-primary" id="run" style="height:42px; padding:0 18px; font-weight:800;">
+            ⚡ ${t('run')}
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Summary KPI Cards -->
+    <div id="reportSummaryCards" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; margin-bottom:18px;"></div>
+
+    <!-- Table Results Card -->
     <div class="table-card" id="out"></div>
   `;
 
   const run = async () => {
     try {
-      const k = $('#rt').value;
-      const cols = REPORTS[k][1]();
-      const rows = await call('reports:' + k, { from: $('#f').value, to: $('#t').value });
+      currentReportKey = $('#rt').value;
+      const reportDef = REPORTS[currentReportKey];
+      if (!reportDef) return;
+
+      currentCols = reportDef[1]();
+      const fromVal = $('#f').value;
+      const toVal = $('#t').value;
+
+      currentRows = await call('reports:' + currentReportKey, { from: fromVal, to: toVal });
+
+      const grandTotal = currentRows.reduce((s, r) => s + Number(r.Total || 0), 0);
+      const totalUnits = currentRows.reduce((s, r) => s + Number(r.TotalQty || r.Qty || r.Bills || 0), 0);
+
+      const isReturnReport = currentReportKey === 'returns';
+      const isSupplierReturn = currentReportKey.startsWith('supplier_return');
+      const isGrnReport = currentReportKey.startsWith('grn');
+
+      const volumeLabel = isGrnReport ? 'Goods Received Volume' : (isReturnReport || isSupplierReturn) ? 'Items Returned Volume' : 'Total Volume / Units';
+      const volumeSub = isGrnReport ? 'Total physical units received' : isSupplierReturn ? 'Units returned to vendor' : isReturnReport ? 'Units processed for refund' : 'Total volume handled';
+      const totalAmountLabel = isReturnReport ? 'Total Customer Refund' : isSupplierReturn ? 'Total Supplier Debit' : isGrnReport ? 'Total Supplier Cost' : 'Grand Total Revenue';
+      const themeColor = isReturnReport ? 'var(--bad)' : isSupplierReturn ? 'var(--accent-amber, #f59e0b)' : 'var(--brand)';
+
+      $('#reportSummaryCards').innerHTML = `
+        <div class="panel-card" style="display:flex; flex-direction:column; gap:4px;">
+          <span class="muted small" style="text-transform:uppercase; font-weight:800; font-size:11px;">Total Entries</span>
+          <h3 style="margin:0; font-size:20px; font-weight:800;">${currentRows.length} Records</h3>
+          <small class="muted">Matching selected date range</small>
+        </div>
+
+        <div class="panel-card" style="display:flex; flex-direction:column; gap:4px;">
+          <span class="muted small" style="text-transform:uppercase; font-weight:800; font-size:11px;">
+            ${volumeLabel}
+          </span>
+          <h3 style="margin:0; font-size:20px; font-weight:800;">${totalUnits.toLocaleString()}</h3>
+          <small class="muted">${volumeSub}</small>
+        </div>
+
+        <div class="panel-card" style="display:flex; flex-direction:column; gap:4px; border-left:4px solid ${themeColor};">
+          <span class="muted small" style="text-transform:uppercase; font-weight:800; font-size:11px;">
+            ${totalAmountLabel}
+          </span>
+          <h3 style="margin:0; font-size:20px; font-weight:900; color:${themeColor};">
+            ${fmt(grandTotal)}
+          </h3>
+          <small class="muted">${fromVal} to ${toVal}</small>
+        </div>
+      `;
+
       $('#out').innerHTML = `
         <table>
           <thead>
-            <tr>${cols.map(c => `<th>${c[0]}</th>`).join('')}</tr>
+            <tr>${currentCols.map(c => `<th>${c[0]}</th>`).join('')}</tr>
           </thead>
           <tbody>
-            ${rows.map(r => `<tr>${cols.map(c => `<td>${c[1](r)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${cols.length}" class="muted" style="text-align:center; padding:30px;">${t('noData')}</td></tr>`}
+            ${currentRows.map(r => `<tr>${currentCols.map(c => `<td>${c[1](r)}</td>`).join('')}</tr>`).join('') || `<tr><td colspan="${currentCols.length}" class="muted" style="text-align:center; padding:36px;">${t('noData')}</td></tr>`}
           </tbody>
           <tfoot>
             <tr>
-              <td colspan="${cols.length - 1}">${t('grand')}</td>
-              <td>${fmt(rows.reduce((s, r) => s + Number(r.Total), 0))}</td>
+              <td colspan="${currentCols.length - 1}" style="font-weight:800; font-size:13.5px;">${t('grand')}</td>
+              <td style="font-weight:900; font-size:15px; color:${themeColor};">
+                ${fmt(grandTotal)}
+              </td>
             </tr>
           </tfoot>
         </table>
@@ -4043,6 +5447,102 @@ async function vReports() {
     } catch (e) {
       toast(e.message, 1);
     }
+  };
+
+  // Quick Range Event Handlers
+  document.querySelectorAll('.btn-q-range').forEach(btn => {
+    btn.onclick = () => {
+      document.querySelectorAll('.btn-q-range').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      const r = btn.dataset.range;
+      if (r === 'today') {
+        $('#f').value = today();
+        $('#t').value = today();
+      } else if (r === 'yesterday') {
+        $('#f').value = getDaysAgo(1);
+        $('#t').value = getDaysAgo(1);
+      } else if (r === 'week') {
+        $('#f').value = getDaysAgo(7);
+        $('#t').value = today();
+      } else if (r === 'month') {
+        $('#f').value = getStartOfMonth();
+        $('#t').value = today();
+      } else if (r === 'all') {
+        $('#f').value = getDaysAgo(90);
+        $('#t').value = today();
+      }
+      run();
+    };
+  });
+
+  // Print Report Handler
+  $('#btnPrintReport').onclick = () => {
+    if (!currentRows || !currentRows.length) return toast('No report data to print', 1);
+    const container = document.getElementById('printableReceiptArea');
+    if (!container) return;
+    const reportTitle = $('#rt').selectedOptions[0]?.text || 'Business Report';
+    const grandTotal = currentRows.reduce((s, r) => s + Number(r.Total || 0), 0);
+
+    container.innerHTML = `
+      <div style="font-family:sans-serif; color:#000; padding:24px; background:#fff;">
+        <div style="border-bottom:2px solid #000; padding-bottom:10px; margin-bottom:16px;">
+          <h2 style="margin:0; font-size:20px; font-weight:900;">AMECTAR BOOKSHOP & COMMUNICATION</h2>
+          <h3 style="margin:4px 0 0; font-size:16px; font-weight:800; color:#333;">${reportTitle}</h3>
+          <div style="font-size:12px; margin-top:4px; color:#666;">
+            Date Range: <b>${$('#f').value}</b> to <b>${$('#t').value}</b> · Generated: ${new Date().toLocaleString()} · By: ${me?.fullName || 'Admin'}
+          </div>
+        </div>
+
+        <table style="width:100%; border-collapse:collapse; font-size:12px; text-align:left;">
+          <thead>
+            <tr style="border-bottom:2px solid #222; background:#f5f5f5;">
+              ${currentCols.map(c => `<th style="padding:8px 6px; font-weight:800;">${c[0]}</th>`).join('')}
+            </tr>
+          </thead>
+          <tbody>
+            ${currentRows.map(r => `
+              <tr style="border-bottom:1px solid #ddd;">
+                ${currentCols.map(c => `<td style="padding:7px 6px;">${String(c[1](r)).replace(/<[^>]*>/g, '').trim()}</td>`).join('')}
+              </tr>
+            `).join('')}
+          </tbody>
+          <tfoot>
+            <tr style="border-top:2px solid #000; font-weight:900; background:#f9f9f9;">
+              <td colspan="${currentCols.length - 1}" style="padding:10px 6px; font-size:13px;">GRAND TOTAL</td>
+              <td style="padding:10px 6px; font-size:14px;">${fmt(grandTotal)}</td>
+            </tr>
+          </tfoot>
+        </table>
+
+        <div style="margin-top:20px; font-size:10px; color:#888; text-align:right;">
+          Amectar Bookshop POS Enterprise System · Confidential Business Document
+        </div>
+      </div>
+    `;
+    window.print();
+  };
+
+  // CSV Export Handler
+  $('#btnExportCsv').onclick = () => {
+    if (!currentRows || !currentRows.length) return toast('No report data to export', 1);
+    const headers = currentCols.map(c => `"${c[0].replace(/"/g, '""')}"`).join(',');
+    const lines = currentRows.map(r => {
+      return currentCols.map(c => {
+        let val = String(c[1](r)).replace(/<[^>]*>/g, '').trim();
+        return `"${val.replace(/"/g, '""')}"`;
+      }).join(',');
+    });
+    const csvData = [headers, ...lines].join('\n');
+    const blob = new Blob([csvData], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `Report_${currentReportKey}_${today()}.csv`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    toast('CSV file exported successfully!');
   };
 
   $('#run').onclick = run;
@@ -4893,6 +6393,16 @@ async function vHelp() {
               </div>
               <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
                 ${isSi ? 'පද්ධතියේ ලියාපදිංචි නොවූ සෙල්ලම් බඩු, කීටැග් හෝ සේවා ක්ෂණික මිලකට බිල් කරයි.' : 'Instantly bill uncatalogued toys, novelty keytags or custom repair jobs.'}
+              </small>
+            </div>
+
+            <div style="background:var(--bg-input); padding:14px; border-radius:12px; border:1px solid var(--border);">
+              <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;">
+                <b style="font-size:13.5px; color:var(--text-main);">${isSi ? 'භාණ්ඩ ආපසු භාරගැනීම' : 'Return & Refund'}</b>
+                <span class="pill warn" style="font-weight:900; font-family:monospace; font-size:12px;">F4</span>
+              </div>
+              <small class="muted" style="display:block; font-size:12px; line-height:1.4;">
+                ${isSi ? 'පාරිභෝගික භාණ්ඩ ආපසු භාරගැනීම, බිල්පතෙන් භාණ්ඩ ආපසු ගැනීම සහ මුදල් ආපසු ගෙවීම.' : 'Return customer items by invoice or direct return, restock items & issue refunds.'}
               </small>
             </div>
 

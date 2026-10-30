@@ -23,7 +23,11 @@ const SCHEMA = [
 `IF OBJECT_ID('Payments','U') IS NULL CREATE TABLE Payments(Id INT IDENTITY PRIMARY KEY, Period CHAR(7) NOT NULL, Amount DECIMAL(12,2) NOT NULL, Method NVARCHAR(20) NOT NULL, Note NVARCHAR(200) NULL, PaidAt DATETIME2 NOT NULL DEFAULT SYSDATETIME(), RecordedBy NVARCHAR(50) NOT NULL)`,
 `IF OBJECT_ID('GRNs','U') IS NULL CREATE TABLE GRNs(Id INT IDENTITY PRIMARY KEY, GrnNo NVARCHAR(50) NOT NULL UNIQUE, Supplier NVARCHAR(100) NOT NULL, InvoiceRef NVARCHAR(50) NULL, TotalCost DECIMAL(12,2) NOT NULL DEFAULT 0, Notes NVARCHAR(250) NULL, ReceivedBy NVARCHAR(100) NOT NULL, CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME())`,
 `IF OBJECT_ID('GRNItems','U') IS NULL CREATE TABLE GRNItems(Id INT IDENTITY PRIMARY KEY, GrnId INT NOT NULL REFERENCES GRNs(Id) ON DELETE CASCADE, ItemId INT NOT NULL REFERENCES Items(Id), ItemName NVARCHAR(100) NOT NULL, Qty INT NOT NULL, UnitCost DECIMAL(12,2) NOT NULL DEFAULT 0, LineTotal DECIMAL(12,2) NOT NULL DEFAULT 0, BatchNo NVARCHAR(50) NULL, ExpiryDate NVARCHAR(20) NULL)`,
-`IF OBJECT_ID('SubscriptionCodes','U') IS NULL CREATE TABLE SubscriptionCodes(Code NVARCHAR(50) PRIMARY KEY, Months INT NOT NULL DEFAULT 1, UsedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME(), Period NVARCHAR(10) NOT NULL, UsedBy NVARCHAR(100) NOT NULL, Note NVARCHAR(200) NULL)`
+`IF OBJECT_ID('SubscriptionCodes','U') IS NULL CREATE TABLE SubscriptionCodes(Code NVARCHAR(50) PRIMARY KEY, Months INT NOT NULL DEFAULT 1, UsedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME(), Period NVARCHAR(10) NOT NULL, UsedBy NVARCHAR(100) NOT NULL, Note NVARCHAR(200) NULL)`,
+`IF OBJECT_ID('Returns','U') IS NULL CREATE TABLE Returns(Id INT IDENTITY PRIMARY KEY, ReturnNo NVARCHAR(50) NOT NULL UNIQUE, SaleId INT NULL REFERENCES Sales(Id), InvoiceNo NVARCHAR(50) NULL, CashierId INT NOT NULL REFERENCES Users(Id), TotalRefund DECIMAL(12,2) NOT NULL DEFAULT 0, RefundMethod NVARCHAR(20) NOT NULL DEFAULT 'Cash', Reason NVARCHAR(250) NULL, Notes NVARCHAR(500) NULL, CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME())`,
+`IF OBJECT_ID('ReturnItems','U') IS NULL CREATE TABLE ReturnItems(Id INT IDENTITY PRIMARY KEY, ReturnId INT NOT NULL REFERENCES Returns(Id) ON DELETE CASCADE, ItemId INT NOT NULL REFERENCES Items(Id), ItemName NVARCHAR(100) NOT NULL, Qty INT NOT NULL, UnitPrice DECIMAL(12,2) NOT NULL, RefundTotal DECIMAL(12,2) NOT NULL, Restock BIT NOT NULL DEFAULT 1, Reason NVARCHAR(100) NULL)`,
+`IF OBJECT_ID('SupplierReturns','U') IS NULL CREATE TABLE SupplierReturns(Id INT IDENTITY PRIMARY KEY, ReturnNo NVARCHAR(50) NOT NULL UNIQUE, GrnId INT NULL REFERENCES GRNs(Id), GrnNo NVARCHAR(50) NULL, Supplier NVARCHAR(100) NOT NULL, TotalDebit DECIMAL(12,2) NOT NULL DEFAULT 0, Reason NVARCHAR(250) NULL, Notes NVARCHAR(500) NULL, ReturnedBy NVARCHAR(100) NOT NULL, CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME())`,
+`IF OBJECT_ID('SupplierReturnItems','U') IS NULL CREATE TABLE SupplierReturnItems(Id INT IDENTITY PRIMARY KEY, ReturnId INT NOT NULL REFERENCES SupplierReturns(Id) ON DELETE CASCADE, ItemId INT NOT NULL REFERENCES Items(Id), ItemName NVARCHAR(100) NOT NULL, Qty INT NOT NULL, UnitCost DECIMAL(12,2) NOT NULL DEFAULT 0, LineTotal DECIMAL(12,2) NOT NULL DEFAULT 0, BatchNo NVARCHAR(50) NULL, Reason NVARCHAR(100) NULL)`
 ];
 
 const DEFAULT_BOOKSHOP_ITEMS = [
@@ -288,7 +292,8 @@ function hasAccess(ch, session, roles) {
     if (ch === 'items:list') return userPerms.includes('pos') || userPerms.includes('items') || userPerms.includes('grn');
     return userPerms.includes('items');
   }
-  if (ch.startsWith('grn:')) return userPerms.includes('grn');
+  if (ch.startsWith('grn:') || ch.startsWith('supplierReturns:')) return userPerms.includes('grn');
+  if (ch.startsWith('returns:')) return userPerms.includes('pos') || userPerms.includes('reports');
   if (ch.startsWith('reports:')) return userPerms.includes('reports');
   if (ch.startsWith('settings:')) {
     if (ch === 'settings:getReceipt') return true;
@@ -665,7 +670,7 @@ async function performDatabaseBackup() {
   let stats = {};
   try {
     const q = () => pool.request();
-    const [users, items, sales, saleItems, settings, payments, grns, grnItems, subCodes] = await Promise.all([
+    const [users, items, sales, saleItems, settings, payments, grns, grnItems, subCodes, returns, returnItems, suppReturns, suppReturnItems] = await Promise.all([
       q().query('SELECT Id, Username, FullName, Role, Active, Permissions, PasswordHash FROM Users').then(r => r.recordset).catch(() => []),
       q().query('SELECT * FROM Items').then(r => r.recordset).catch(() => []),
       q().query('SELECT * FROM Sales').then(r => r.recordset).catch(() => []),
@@ -674,7 +679,11 @@ async function performDatabaseBackup() {
       q().query('SELECT * FROM Payments').then(r => r.recordset).catch(() => []),
       q().query('SELECT * FROM GRNs').then(r => r.recordset).catch(() => []),
       q().query('SELECT * FROM GRNItems').then(r => r.recordset).catch(() => []),
-      q().query('SELECT * FROM SubscriptionCodes').then(r => r.recordset).catch(() => [])
+      q().query('SELECT * FROM SubscriptionCodes').then(r => r.recordset).catch(() => []),
+      q().query('SELECT * FROM Returns').then(r => r.recordset).catch(() => []),
+      q().query('SELECT * FROM ReturnItems').then(r => r.recordset).catch(() => []),
+      q().query('SELECT * FROM SupplierReturns').then(r => r.recordset).catch(() => []),
+      q().query('SELECT * FROM SupplierReturnItems').then(r => r.recordset).catch(() => [])
     ]);
 
     stats = {
@@ -683,6 +692,8 @@ async function performDatabaseBackup() {
       salesCount: sales.length,
       saleItemsCount: saleItems.length,
       grnCount: grns.length,
+      returnsCount: returns.length,
+      supplierReturnsCount: suppReturns.length,
       paymentsCount: payments.length
     };
 
@@ -704,7 +715,11 @@ async function performDatabaseBackup() {
         Payments: payments,
         GRNs: grns,
         GRNItems: grnItems,
-        SubscriptionCodes: subCodes
+        SubscriptionCodes: subCodes,
+        Returns: returns,
+        ReturnItems: returnItems,
+        SupplierReturns: suppReturns,
+        SupplierReturnItems: suppReturnItems
       }
     };
 
@@ -1015,12 +1030,273 @@ handle('sales:checkout', ALL, async ({ lines, paid, paymentMethod, billDiscount 
   } catch (e) { await tx.rollback().catch(() => {}); throw e; }
 });
 
+/* ==========================================================================
+   CUSTOMER RETURNS & REFUNDS HANDLERS
+   ========================================================================== */
+handle('returns:findInvoice', ALL, async ({ invoiceNo, saleId }) => {
+  let sale = null;
+  if (invoiceNo && invoiceNo.trim()) {
+    const inv = invoiceNo.trim();
+    sale = (await pool.request()
+      .input('inv', sql.NVarChar, inv)
+      .input('num', sql.Int, parseInt(inv.replace(/\D/g, '')) || 0)
+      .query(`SELECT s.*, u.FullName CashierName 
+              FROM Sales s 
+              LEFT JOIN Users u ON u.Id = s.CashierId 
+              WHERE s.InvoiceNo = @inv OR s.Id = @num`)).recordset[0];
+  } else if (saleId) {
+    sale = (await pool.request().input('id', sql.Int, saleId)
+      .query(`SELECT s.*, u.FullName CashierName 
+              FROM Sales s 
+              LEFT JOIN Users u ON u.Id = s.CashierId 
+              WHERE s.Id = @id`)).recordset[0];
+  }
+  if (!sale) throw new Error('Invoice not found. Please verify bill number.');
+
+  // Get sale items along with any already returned quantities
+  const items = (await pool.request().input('sid', sql.Int, sale.Id)
+    .query(`
+      SELECT si.Id AS SaleItemId, si.ItemId, si.ItemName, si.Qty, si.UnitPrice, si.DiscountPct, si.LineTotal,
+             ISNULL(i.IsService, 0) AS IsService,
+             ISNULL((
+               SELECT SUM(ri.Qty) 
+               FROM ReturnItems ri 
+               JOIN Returns r ON r.Id = ri.ReturnId 
+               WHERE r.SaleId = si.SaleId AND ri.ItemId = si.ItemId
+             ), 0) AS ReturnedQty
+      FROM SaleItems si
+      LEFT JOIN Items i ON i.Id = si.ItemId
+      WHERE si.SaleId = @sid
+    `)).recordset;
+
+  const returnable = items.map(it => ({
+    ...it,
+    availableReturnQty: Math.max(0, it.Qty - it.ReturnedQty)
+  }));
+
+  return { sale, items: returnable };
+});
+
+handle('returns:process', ALL, async ({ saleId, invoiceNo, items, refundMethod, reason, notes }) => {
+  if (!Array.isArray(items) || !items.length) throw new Error('No items selected for return');
+  const tx = new sql.Transaction(pool);
+  await tx.begin();
+  try {
+    let totalRefund = 0;
+    const validated = [];
+    for (const row of items) {
+      const qty = parseInt(row.qty);
+      if (!(qty > 0)) throw new Error('Invalid return quantity');
+      const unitPrice = Math.max(0, +row.unitPrice || 0);
+      const lineRefund = r2(qty * unitPrice);
+      totalRefund += lineRefund;
+
+      const it = (await new sql.Request(tx).input('id', sql.Int, row.itemId)
+        .query('SELECT Id, Name, IsService, Stock FROM Items WHERE Id=@id')).recordset[0];
+      if (!it) throw new Error(`Item not found (#${row.itemId})`);
+
+      validated.push({
+        itemId: it.Id,
+        itemName: row.itemName || it.Name,
+        qty,
+        unitPrice,
+        refundTotal: lineRefund,
+        restock: Boolean(row.restock),
+        isService: Boolean(it.IsService),
+        reason: (row.reason || reason || 'Customer Return').trim()
+      });
+    }
+    totalRefund = r2(totalRefund);
+
+    const d = new Date();
+    const pad = n => String(n).padStart(2, '0');
+    const datePart = `${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}`;
+    const rand = Math.floor(1000 + Math.random() * 9000);
+    const returnNo = `RET-${datePart}-${rand}`;
+
+    const retRes = await new sql.Request(tx)
+      .input('rn', sql.NVarChar, returnNo)
+      .input('sid', sql.Int, saleId || null)
+      .input('inv', sql.NVarChar, invoiceNo || null)
+      .input('cid', sql.Int, session.id)
+      .input('tr', sql.Decimal(12, 2), totalRefund)
+      .input('rm', sql.NVarChar, (refundMethod || 'Cash').trim())
+      .input('rs', sql.NVarChar, (reason || 'Customer Return').trim())
+      .input('nt', sql.NVarChar, (notes || '').trim() || null)
+      .query(`INSERT INTO Returns(ReturnNo, SaleId, InvoiceNo, CashierId, TotalRefund, RefundMethod, Reason, Notes)
+              OUTPUT inserted.Id VALUES(@rn, @sid, @inv, @cid, @tr, @rm, @rs, @nt)`);
+    
+    const returnId = retRes.recordset[0].Id;
+
+    for (const v of validated) {
+      await new sql.Request(tx)
+        .input('rid', sql.Int, returnId)
+        .input('iid', sql.Int, v.itemId)
+        .input('inm', sql.NVarChar, v.itemName)
+        .input('q', sql.Int, v.qty)
+        .input('up', sql.Decimal(12, 2), v.unitPrice)
+        .input('rt', sql.Decimal(12, 2), v.refundTotal)
+        .input('rst', sql.Bit, v.restock ? 1 : 0)
+        .input('rsn', sql.NVarChar, v.reason)
+        .query(`INSERT INTO ReturnItems(ReturnId, ItemId, ItemName, Qty, UnitPrice, RefundTotal, Restock, Reason)
+                VALUES(@rid, @iid, @inm, @q, @up, @rt, @rst, @rsn)`);
+
+      // If restocking physical product, increment inventory stock
+      if (v.restock && !v.isService) {
+        await new sql.Request(tx)
+          .input('iid', sql.Int, v.itemId)
+          .input('q', sql.Int, v.qty)
+          .query('UPDATE Items SET Stock = Stock + @q WHERE Id=@iid');
+      }
+    }
+
+    await tx.commit();
+
+    const st = await getSettings();
+    return {
+      returnId,
+      returnNo,
+      invoiceNo: invoiceNo || 'Direct Return',
+      createdAt: d.toISOString(),
+      cashier: session.fullName,
+      items: validated,
+      totalRefund,
+      refundMethod: refundMethod || 'Cash',
+      reason: reason || 'Customer Return',
+      notes: notes || '',
+      shopSettings: {
+        shopName: st.shopName || 'Amectar Bookshop & Communication',
+        shopTagline: st.shopTagline || 'Books, Stationery, Gifts & Print/Copy Services',
+        shopAddress: st.shopAddress || 'No. 45, Station Road, Colombo',
+        shopPhone: st.shopPhone || '071 234 5678 / 011 234 5678',
+        receiptHeader: 'CUSTOMER RETURN & REFUND VOUCHER',
+        receiptFooter: 'Item(s) processed for refund/exchange. Thank you.',
+        receiptPaperWidth: st.receiptPaperWidth || '80mm'
+      }
+    };
+  } catch (e) {
+    await tx.rollback().catch(() => {});
+    throw e;
+  }
+});
+
+handle('returns:list', ALL, async () => (await pool.request().query(`
+  SELECT TOP 100 r.Id, r.ReturnNo, r.InvoiceNo, r.TotalRefund, r.RefundMethod, r.Reason, r.CreatedAt,
+         u.FullName AS CashierName,
+         COUNT(ri.Id) AS ItemCount,
+         ISNULL(SUM(ri.Qty), 0) AS TotalQty
+  FROM Returns r
+  LEFT JOIN Users u ON u.Id = r.CashierId
+  LEFT JOIN ReturnItems ri ON ri.ReturnId = r.Id
+  GROUP BY r.Id, r.ReturnNo, r.InvoiceNo, r.TotalRefund, r.RefundMethod, r.Reason, r.CreatedAt, u.FullName
+  ORDER BY r.Id DESC
+`)).recordset);
+
+handle('returns:get', ALL, async ({ id }) => {
+  const ret = (await pool.request().input('id', sql.Int, id)
+    .query(`SELECT r.*, u.FullName CashierName 
+            FROM Returns r 
+            LEFT JOIN Users u ON u.Id = r.CashierId 
+            WHERE r.Id = @id`)).recordset[0];
+  if (!ret) throw new Error('Return voucher not found');
+  const items = (await pool.request().input('id', sql.Int, id)
+    .query('SELECT * FROM ReturnItems WHERE ReturnId = @id ORDER BY Id ASC')).recordset;
+  return { return: ret, items };
+});
+
+/* ==========================================================================
+   REPORTS & ANALYTICS HANDLERS
+   ========================================================================== */
 handle('reports:daily', MA, async p => (await rng(p, pool.request()).query(
   `SELECT CONVERT(VARCHAR(10),CreatedAt,120) Day, COUNT(*) Bills, SUM(Total) Total, ISNULL(SUM(Discount),0) Discount FROM Sales WHERE ${RANGE} GROUP BY CONVERT(VARCHAR(10),CreatedAt,120) ORDER BY Day DESC`)).recordset);
+
 handle('reports:items', MA, async p => (await rng(p, pool.request()).query(
-  `SELECT si.ItemName Item, SUM(si.Qty) Qty, SUM(si.LineTotal) Total FROM SaleItems si JOIN Sales ON Sales.Id=si.SaleId WHERE ${RANGE} GROUP BY si.ItemName ORDER BY Total DESC`)).recordset);
+  `SELECT si.ItemName Item, ISNULL(i.Category, 'General') Category, SUM(si.Qty) Qty, SUM(si.LineTotal) Total 
+   FROM SaleItems si 
+   JOIN Sales ON Sales.Id=si.SaleId 
+   LEFT JOIN Items i ON i.Id=si.ItemId
+   WHERE ${RANGE} 
+   GROUP BY si.ItemName, i.Category 
+   ORDER BY Total DESC`)).recordset);
+
 handle('reports:cashiers', MA, async p => (await rng(p, pool.request()).query(
-  `SELECT u.FullName Cashier, COUNT(*) Bills, SUM(Sales.Total) Total FROM Sales JOIN Users u ON u.Id=Sales.CashierId WHERE ${RANGE} GROUP BY u.FullName ORDER BY Total DESC`)).recordset);
+  `SELECT u.FullName Cashier, COUNT(*) Bills, SUM(Sales.Total) Total,
+          CASE WHEN COUNT(*) > 0 THEN ROUND(SUM(Sales.Total) / COUNT(*), 2) ELSE 0 END AOV
+   FROM Sales 
+   JOIN Users u ON u.Id=Sales.CashierId 
+   WHERE ${RANGE} 
+   GROUP BY u.FullName 
+   ORDER BY Total DESC`)).recordset);
+
+handle('reports:grn', MA, async p => (await rng(p, pool.request()).query(
+  `SELECT g.Id, g.GrnNo, g.Supplier, ISNULL(g.InvoiceRef, '—') InvoiceRef, g.TotalCost Total, g.ReceivedBy,
+          CONVERT(VARCHAR(10),g.CreatedAt,120) Day, g.CreatedAt,
+          COUNT(gi.Id) ItemsCount, ISNULL(SUM(gi.Qty), 0) TotalQty
+   FROM GRNs g
+   LEFT JOIN GRNItems gi ON gi.GrnId = g.Id
+   WHERE g.CreatedAt >= CAST(@f AS DATE) AND g.CreatedAt < DATEADD(day,1,CAST(@t AS DATE))
+   GROUP BY g.Id, g.GrnNo, g.Supplier, g.InvoiceRef, g.TotalCost, g.ReceivedBy, g.CreatedAt
+   ORDER BY g.Id DESC`)).recordset);
+
+handle('reports:grn_items', MA, async p => (await rng(p, pool.request()).query(
+  `SELECT gi.ItemName Item, g.Supplier, g.GrnNo, ISNULL(gi.BatchNo, '—') BatchNo, ISNULL(gi.ExpiryDate, '—') ExpiryDate,
+          SUM(gi.Qty) Qty, gi.UnitCost, SUM(gi.LineTotal) Total,
+          CONVERT(VARCHAR(10),g.CreatedAt,120) Day
+   FROM GRNItems gi
+   JOIN GRNs g ON g.Id = gi.GrnId
+   WHERE g.CreatedAt >= CAST(@f AS DATE) AND g.CreatedAt < DATEADD(day,1,CAST(@t AS DATE))
+   GROUP BY gi.ItemName, g.Supplier, g.GrnNo, gi.BatchNo, gi.ExpiryDate, gi.UnitCost, CONVERT(VARCHAR(10),g.CreatedAt,120)
+   ORDER BY Day DESC, Total DESC`)).recordset);
+
+handle('reports:returns', MA, async p => (await rng(p, pool.request()).query(
+  `SELECT r.Id, r.ReturnNo, ISNULL(r.InvoiceNo, 'Direct Return') InvoiceNo,
+          u.FullName Cashier, r.RefundMethod Method, ISNULL(r.Reason, 'Customer Return') Reason,
+          r.TotalRefund Total, CONVERT(VARCHAR(10),r.CreatedAt,120) Day, r.CreatedAt,
+          COUNT(ri.Id) ItemsCount, ISNULL(SUM(ri.Qty), 0) TotalQty
+   FROM Returns r
+   LEFT JOIN Users u ON u.Id = r.CashierId
+   LEFT JOIN ReturnItems ri ON ri.ReturnId = r.Id
+   WHERE r.CreatedAt >= CAST(@f AS DATE) AND r.CreatedAt < DATEADD(day,1,CAST(@t AS DATE))
+   GROUP BY r.Id, r.ReturnNo, r.InvoiceNo, u.FullName, r.RefundMethod, r.Reason, r.TotalRefund, r.CreatedAt
+   ORDER BY r.Id DESC`)).recordset);
+
+handle('reports:categories', MA, async p => (await rng(p, pool.request()).query(
+  `SELECT ISNULL(i.Category, 'General') Category, COUNT(DISTINCT s.Id) Bills, SUM(si.Qty) Qty,
+          ISNULL(SUM(si.LineTotal), 0) Total
+   FROM SaleItems si
+   JOIN Items i ON i.Id = si.ItemId
+   JOIN Sales s ON s.Id = si.SaleId
+   WHERE s.CreatedAt >= CAST(@f AS DATE) AND s.CreatedAt < DATEADD(day,1,CAST(@t AS DATE))
+   GROUP BY i.Category
+   ORDER BY Total DESC`)).recordset);
+
+handle('reports:payments', MA, async p => (await rng(p, pool.request()).query(
+  `SELECT ISNULL(PaymentMethod, 'Cash') Method, COUNT(*) Bills,
+          ISNULL(SUM(Total), 0) Total
+   FROM Sales
+   WHERE CreatedAt >= CAST(@f AS DATE) AND CreatedAt < DATEADD(day,1,CAST(@t AS DATE))
+   GROUP BY PaymentMethod
+   ORDER BY Total DESC`)).recordset);
+
+handle('reports:supplier_returns', MA, async p => (await rng(p, pool.request()).query(
+  `SELECT sr.Id, sr.ReturnNo, sr.Supplier, ISNULL(sr.GrnNo, 'Direct Return') GrnNo,
+          sr.TotalDebit Total, ISNULL(sr.Reason, 'Vendor Return') Reason,
+          sr.ReturnedBy, CONVERT(VARCHAR(10),sr.CreatedAt,120) Day, sr.CreatedAt,
+          COUNT(sri.Id) ItemsCount, ISNULL(SUM(sri.Qty), 0) TotalQty
+   FROM SupplierReturns sr
+   LEFT JOIN SupplierReturnItems sri ON sri.ReturnId = sr.Id
+   WHERE sr.CreatedAt >= CAST(@f AS DATE) AND sr.CreatedAt < DATEADD(day,1,CAST(@t AS DATE))
+   GROUP BY sr.Id, sr.ReturnNo, sr.Supplier, sr.GrnNo, sr.TotalDebit, sr.Reason, sr.ReturnedBy, sr.CreatedAt
+   ORDER BY sr.Id DESC`)).recordset);
+
+handle('reports:supplier_return_items', MA, async p => (await rng(p, pool.request()).query(
+  `SELECT sri.ItemName Item, sr.Supplier, sr.ReturnNo, ISNULL(sri.BatchNo, '—') BatchNo,
+          sri.Qty, sri.UnitCost, sri.LineTotal Total, ISNULL(sri.Reason, sr.Reason) Reason,
+          CONVERT(VARCHAR(10),sr.CreatedAt,120) Day
+   FROM SupplierReturnItems sri
+   JOIN SupplierReturns sr ON sr.Id = sri.ReturnId
+   WHERE sr.CreatedAt >= CAST(@f AS DATE) AND sr.CreatedAt < DATEADD(day,1,CAST(@t AS DATE))
+   ORDER BY Day DESC, Total DESC`)).recordset);
 
 /* ---------- Dashboard & GRN ---------- */
 handle('dashboard:overview', ALL, async () => {
@@ -1264,6 +1540,128 @@ handle('grn:create', MA, async ({ grnNo, supplier, invoiceRef, notes, items }) =
 
     await tx.commit();
     return { id: grnId, grnNo: finalGrnNo, totalCost, itemsCount: validated.length };
+  } catch (err) {
+    await tx.rollback().catch(() => {});
+    throw err;
+  }
+});
+
+/* ==========================================================================
+   SUPPLIER RETURNS (PURCHASE RETURNS / DEBIT NOTES)
+   ========================================================================== */
+handle('supplierReturns:list', MA, async () => (await pool.request().query(`
+  SELECT sr.Id, sr.ReturnNo, sr.GrnId, sr.GrnNo, sr.Supplier, sr.TotalDebit, sr.Reason, sr.Notes, sr.ReturnedBy, sr.CreatedAt,
+         COUNT(sri.Id) AS ItemCount, ISNULL(SUM(sri.Qty), 0) AS TotalQty
+  FROM SupplierReturns sr
+  LEFT JOIN SupplierReturnItems sri ON sri.ReturnId = sr.Id
+  GROUP BY sr.Id, sr.ReturnNo, sr.GrnId, sr.GrnNo, sr.Supplier, sr.TotalDebit, sr.Reason, sr.Notes, sr.ReturnedBy, sr.CreatedAt
+  ORDER BY sr.Id DESC
+`)).recordset);
+
+handle('supplierReturns:get', MA, async ({ id }) => {
+  const ret = (await pool.request().input('id', sql.Int, id)
+    .query('SELECT * FROM SupplierReturns WHERE Id=@id')).recordset[0];
+  if (!ret) throw new Error('Supplier Return not found');
+  const items = (await pool.request().input('id', sql.Int, id)
+    .query('SELECT * FROM SupplierReturnItems WHERE ReturnId=@id ORDER BY Id ASC')).recordset;
+  return { return: ret, items };
+});
+
+handle('supplierReturns:create', MA, async ({ returnNo, grnId, grnNo, supplier, reason, notes, items }) => {
+  if (!supplier?.trim()) throw new Error('Supplier name is required');
+  if (!Array.isArray(items) || !items.length) throw new Error('At least one item is required to return to supplier');
+
+  let finalRetNo = returnNo?.trim();
+  if (!finalRetNo) {
+    const pad = n => String(n).padStart(2, '0');
+    const d = new Date();
+    finalRetNo = `SRT-${d.getFullYear()}${pad(d.getMonth()+1)}${pad(d.getDate())}-${Math.floor(1000 + Math.random() * 9000)}`;
+  }
+
+  const tx = new sql.Transaction(pool);
+  await tx.begin();
+  try {
+    let totalDebit = 0;
+    const validated = [];
+    for (const row of items) {
+      const it = (await new sql.Request(tx).input('id', sql.Int, row.itemId)
+        .query('SELECT Id, Name, Price, Stock FROM Items WHERE Id=@id AND Active=1')).recordset[0];
+      if (!it) throw new Error(`Invalid item ID: ${row.itemId}`);
+      const qty = parseInt(row.qty);
+      const unitCost = Math.max(0, +row.unitCost || 0);
+      if (!(qty > 0)) throw new Error(`Invalid quantity for item ${it.Name}`);
+      if (it.Stock < qty) {
+        throw new Error(`Cannot return ${qty} of "${it.Name}". Current physical stock is only ${it.Stock}.`);
+      }
+      const lineTotal = r2(qty * unitCost);
+      totalDebit += lineTotal;
+      validated.push({
+        itemId: it.Id,
+        itemName: it.Name,
+        qty,
+        unitCost,
+        lineTotal,
+        batchNo: row.batchNo?.trim() || null,
+        reason: row.reason?.trim() || reason || 'Damaged / Expired Goods'
+      });
+    }
+    totalDebit = r2(totalDebit);
+
+    const d = new Date();
+    const retInsert = await new sql.Request(tx)
+      .input('rn', sql.NVarChar, finalRetNo)
+      .input('gid', sql.Int, grnId || null)
+      .input('gn', sql.NVarChar, grnNo?.trim() || null)
+      .input('sup', sql.NVarChar, supplier.trim())
+      .input('td', sql.Decimal(12, 2), totalDebit)
+      .input('rs', sql.NVarChar, (reason || 'Damaged / Expired Goods').trim())
+      .input('not', sql.NVarChar, notes?.trim() || null)
+      .input('ret', sql.NVarChar, session.fullName || session.username)
+      .query(`INSERT INTO SupplierReturns(ReturnNo, GrnId, GrnNo, Supplier, TotalDebit, Reason, Notes, ReturnedBy)
+              OUTPUT inserted.Id VALUES(@rn, @gid, @gn, @sup, @td, @rs, @not, @ret)`);
+
+    const returnId = retInsert.recordset[0].Id;
+
+    for (const v of validated) {
+      await new sql.Request(tx)
+        .input('rid', sql.Int, returnId)
+        .input('iid', sql.Int, v.itemId)
+        .input('inm', sql.NVarChar, v.itemName)
+        .input('q', sql.Int, v.qty)
+        .input('uc', sql.Decimal(12, 2), v.unitCost)
+        .input('lt', sql.Decimal(12, 2), v.lineTotal)
+        .input('bn', sql.NVarChar, v.batchNo)
+        .input('rs', sql.NVarChar, v.reason)
+        .query(`INSERT INTO SupplierReturnItems(ReturnId, ItemId, ItemName, Qty, UnitCost, LineTotal, BatchNo, Reason)
+                VALUES(@rid, @iid, @inm, @q, @uc, @lt, @bn, @rs)`);
+
+      // Deduct stock from inventory
+      await new sql.Request(tx)
+        .input('iid', sql.Int, v.itemId)
+        .input('q', sql.Int, v.qty)
+        .query('UPDATE Items SET Stock = Stock - @q WHERE Id=@iid');
+    }
+
+    await tx.commit();
+
+    const st = await getSettings();
+    return {
+      returnId,
+      returnNo: finalRetNo,
+      grnNo: grnNo || 'Direct Return',
+      supplier: supplier.trim(),
+      totalDebit,
+      itemsCount: validated.length,
+      returnedBy: session.fullName || session.username,
+      createdAt: d.toISOString(),
+      items: validated,
+      shopSettings: {
+        shopName: st.shopName || 'Amectar Bookshop & Communication',
+        shopAddress: st.shopAddress || 'No. 45, Station Road, Colombo',
+        shopPhone: st.shopPhone || '071 234 5678',
+        receiptPaperWidth: st.receiptPaperWidth || '80mm'
+      }
+    };
   } catch (err) {
     await tx.rollback().catch(() => {});
     throw err;
