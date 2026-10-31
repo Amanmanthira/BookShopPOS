@@ -62,8 +62,8 @@ const D = {
   receiptFooter: ['Receipt Bottom Footer Note', 'රිසිට්පත් පහළ සටහන'],
   paperWidth: ['Paper Width (80mm / 58mm)', 'කඩදාසි පළල (80mm / 58mm)'],
   autoPrintReceipt: ['Auto Print on Checkout', 'ගෙවීම අවසන් වූ විට ස්වයංක්‍රීයව මුද්‍රණය'],
-  printOn: ['🖨️ Print: ON', '🖨️ මුද්‍රණය: සක්‍රියයි'],
-  printOff: ['🖨️ Print: OFF', '🖨️ මුද්‍රණය: අක්‍රියයි'],
+  printOn: ['Print: ON', 'මුද්‍රණය: සක්‍රියයි'],
+  printOff: ['Print: OFF', 'මුද්‍රණය: අක්‍රියයි'],
   cashRequiredAlert: ['Please enter cash received amount (Numbers only, minimum total)!', 'කරුණාකර ලැබුණු මුදල ඇතුළත් කරන්න (අවම එකතුවට සමාන හෝ වැඩි විය යුතුය)!'],
   selectProduct: ['Search product to add (All categories)…', 'එක් කිරීමට භාණ්ඩය සොයන්න (සියලු කාණ්ඩ)…'],
   allCategories: ['All Categories', 'සියලු වර්ග'],
@@ -72,6 +72,8 @@ const D = {
   arrowKeysHint: ['Arrow Keys Select', 'ඊතල යතුරු තෝරන්න'],
   enterAddHint: ['Enter Add', 'Enter එකතු කරන්න'],
   enterPayHint: ['Enter Payment', 'Enter ගෙවීම'],
+  mobileReload: ['Mobile Reload & Bills', 'ජංගම දුරකථන රීලෝඩ් සහ බිල්පත්'],
+  reloadsReport: ['Mobile Reloads & Telco Bill Summary', 'රීලෝඩ් සහ බිල්පත් වාර්තාව'],
 
   // Dashboard & Charts
   currentBalance: ['Current Balance (Today)', 'වත්මන් ශේෂය (අද)'],
@@ -910,7 +912,7 @@ function shell() {
   $('#nav').innerHTML = Object.entries(TABS)
     .filter(([k]) => userHasPerm(k))
     .map(([k, v]) => `
-      <button data-t="${k}" class="nav-item-btn ${k === tab ? 'on' : ''}">
+      <button data-t="${k}" class="nav-item-btn ${k === tab ? 'on' : ''}" title="${t(k)}">
         <svg viewBox="0 0 24 24">${ICON[k]}</svg>
         <span>${t(k)}</span>
         ${v[1] && k === tab ? `<span class="nav-badge-pill">${v[1]}</span>` : ''}
@@ -1000,6 +1002,17 @@ function startApp() {
   const userCard = $('#userProfileCard');
   if (userCard) userCard.onclick = () => changeSelfPasswordModal();
 
+  const btnToggleSide = $('#btnToggleSidebar');
+  if (btnToggleSide) {
+    btnToggleSide.onclick = () => {
+      const isComp = $('#app').classList.toggle('sidebar-compact');
+      localStorage.setItem('sidebar_compact', isComp ? '1' : '0');
+    };
+  }
+  if (localStorage.getItem('sidebar_compact') === '1') {
+    $('#app').classList.add('sidebar-compact');
+  }
+
   clearInterval(poll);
   poll = setInterval(refreshSub, 6e5);
   go(tab);
@@ -1013,6 +1026,10 @@ async function go(k) {
     return;
   }
   tab = k;
+  const viewEl = $('#view');
+  if (viewEl) {
+    viewEl.classList.toggle('view-pos-mode', k === 'pos');
+  }
   shell();
   try {
     await TABS[k][0]();
@@ -2016,6 +2033,272 @@ function showPrintServiceCalculator(onAdd) {
 }
 
 /* ==========================================================================
+   MOBILE RELOAD & TELCO BILL PAYMENT MODAL (Alt+L)
+   Dialog, Mobitel, Airtel, Hutch (Fast Telco, Number, Call/Data Type & Amount)
+   ========================================================================== */
+function showReloadModal(onAdd) {
+  const TELCO_OPERATORS = [
+    { id: 'Dialog', name: 'Dialog', dot: '#e11d48', bg: '#ffe4e6', text: '#be123c', prefixes: ['077', '076', '074'], icon: '🔴' },
+    { id: 'Mobitel', name: 'Mobitel', dot: '#2563eb', bg: '#dbeafe', text: '#1d4ed8', prefixes: ['071', '070'], icon: '🔵' },
+    { id: 'Airtel', name: 'Airtel', dot: '#dc2626', bg: '#fee2e2', text: '#b91c1c', prefixes: ['075'], icon: '🔴' },
+    { id: 'Hutch', name: 'Hutch', dot: '#ea580c', bg: '#ffedd5', text: '#c2410c', prefixes: ['078', '072'], icon: '🟠' },
+    { id: 'Other', name: 'Other / Utility', dot: '#8b5cf6', bg: '#ede9fe', text: '#6d28d9', prefixes: [], icon: '⚡' }
+  ];
+
+  const QUICK_AMOUNTS = [50, 100, 200, 350, 500, 1000, 2000];
+  const commissionRate = 0.04; // 4% default shop commission
+
+  let curOp = 'Dialog';
+  let curType = 'Call'; // 'Call' | 'Data' | 'Bill'
+  let curPhone = '';
+  let curAmount = 100;
+
+  const m = modal(`
+    <div class="modal-header" style="border-bottom:1px solid var(--border); padding-bottom:12px;">
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:26px;">📱</span>
+        <div>
+          <h3 class="modal-title" style="margin:0; font-size:18px;">Mobile Reload & Bill Payment</h3>
+          <small class="muted">Fast Airtime & Data Reload for Dialog, Mobitel, Airtel & Hutch (Alt+L)</small>
+        </div>
+      </div>
+      <button class="modal-close-x" data-x>✕</button>
+    </div>
+
+    <!-- 1. Select Telco Operator -->
+    <div style="margin:14px 0 12px;">
+      <span class="field-label" style="display:block; margin-bottom:6px; font-size:11px; text-transform:uppercase; font-weight:800; letter-spacing:0.5px;">1. Select Telco Operator</span>
+      <div id="reloadOpBar" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:8px;">
+        ${TELCO_OPERATORS.map(op => `
+          <button type="button" class="reload-op-btn ${op.id === curOp ? 'active' : ''}" data-op="${op.id}" style="--op-color:${op.dot}; --op-bg:${op.bg}; --op-text:${op.text}; --op-dot:${op.dot};">
+            <span class="reload-badge-dot"></span>
+            <span>${op.name}</span>
+          </button>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- 2. Customer Mobile Number -->
+    <div style="margin-bottom:14px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+        <span class="field-label" id="phoneFieldLabel" style="font-size:11.5px; font-weight:800;">2. Customer Mobile Number (10 Digits) *</span>
+        <span id="detectedOpBadge" class="pill" style="font-size:11px; font-weight:800; background:#ffe4e6; color:#be123c;">🔴 Dialog Detected</span>
+      </div>
+      <input id="reloadPhone" type="tel" maxlength="15" placeholder="077 123 4567" autofocus autocomplete="off"
+             style="width:100%; height:44px; font-size:18px; font-weight:800; padding:8px 14px; border-radius:10px;">
+      <small class="muted" style="font-size:10.5px; margin-top:3px; display:block;">Typing 077/076/074 auto-selects Dialog, 071/070 Mobitel, 075 Airtel, 078/072 Hutch.</small>
+    </div>
+
+    <!-- 3. Select Type: Call vs Data vs Bill -->
+    <div style="margin-bottom:14px;">
+      <span class="field-label" style="display:block; margin-bottom:6px; font-size:11px; text-transform:uppercase; font-weight:800; letter-spacing:0.5px;">3. Select Reload / Service Type</span>
+      <div class="calc-nav-tabs" style="display:grid; grid-template-columns:repeat(3, 1fr); gap:8px;">
+        <button type="button" class="btn btn-sm btn-reload-type active" data-type="Call" style="font-weight:800; padding:10px 6px; font-size:13px;">
+          📞 Call / Voice Reload
+        </button>
+        <button type="button" class="btn btn-sm btn-reload-type btn-ghost" data-type="Data" style="font-weight:800; padding:10px 6px; font-size:13px;">
+          🌐 Data Reload
+        </button>
+        <button type="button" class="btn btn-sm btn-reload-type btn-ghost" data-type="Bill" style="font-weight:800; padding:10px 6px; font-size:13px;">
+          ⚡ Bill Payment
+        </button>
+      </div>
+    </div>
+
+    <!-- 4. Enter Amount & Quick Amount Chips -->
+    <div style="margin-bottom:12px;">
+      <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
+        <span class="field-label" style="font-size:11.5px; font-weight:800;">4. Reload Amount (LKR) *</span>
+        <small class="muted" style="font-size:10.5px;">Type any amount or click below</small>
+      </div>
+      <input id="reloadAmountInput" type="number" min="10" step="1" value="${curAmount}" autocomplete="off"
+             style="width:100%; height:44px; font-size:20px; font-weight:900; padding:8px 14px; border-radius:10px; color:var(--brand);">
+      
+      <!-- Quick Chips -->
+      <div style="display:grid; grid-template-columns:repeat(7, 1fr); gap:6px; margin-top:8px;">
+        ${QUICK_AMOUNTS.map(a => `
+          <button type="button" class="reload-quick-chip ${curAmount === a ? 'active' : ''}" data-val="${a}">
+            ${a}
+          </button>
+        `).join('')}
+      </div>
+    </div>
+
+    <!-- Live Profit & Float Preview Banner -->
+    <div class="reload-profit-banner">
+      <div>
+        <div style="font-size:10.5px; text-transform:uppercase; font-weight:800; color:#a5b4fc; letter-spacing:0.5px;">Charge to Customer</div>
+        <div id="reloadDisplayTotal" style="font-size:24px; font-weight:900; color:#ffffff;">LKR 100.00</div>
+      </div>
+      <div style="text-align:right;">
+        <div style="font-size:11.5px; color:#34d399; font-weight:800;">
+          Est. Shop Profit (4%): <span id="reloadDisplayProfit">+LKR 4.00</span>
+        </div>
+        <small style="color:#94a3b8; font-size:10px;">Merchant SIM Cost: <span id="reloadDisplayCost">LKR 96.00</span></small>
+      </div>
+    </div>
+
+    <!-- Footer Actions -->
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-top:16px;">
+      <button type="button" class="btn btn-ghost" data-x style="font-weight:700;">Cancel (Esc)</button>
+      <button type="button" class="btn btn-primary" id="btnAddReloadToBill" style="padding:11px 26px; font-size:15px; font-weight:800; border-radius:10px; background:linear-gradient(135deg, #10b981 0%, #059669 100%); border:none; box-shadow:0 4px 14px rgba(16,185,129,0.35);">
+        ✓ Add to Current Bill (Enter)
+      </button>
+    </div>
+  `, true);
+
+  const phoneEl = m.querySelector('#reloadPhone');
+  const amountEl = m.querySelector('#reloadAmountInput');
+  const badgeEl = m.querySelector('#detectedOpBadge');
+
+  const updatePreview = () => {
+    const tot = Math.max(0, +curAmount || 0);
+    const profit = tot * commissionRate;
+    const cost = Math.max(0, tot - profit);
+    m.querySelector('#reloadDisplayTotal').textContent = fmt(tot);
+    m.querySelector('#reloadDisplayProfit').textContent = `+${fmt(profit)}`;
+    m.querySelector('#reloadDisplayCost').textContent = fmt(cost);
+    
+    m.querySelectorAll('.reload-quick-chip').forEach(chip => {
+      chip.classList.toggle('active', +chip.dataset.val === curAmount);
+    });
+  };
+
+  const updateOperatorVisual = () => {
+    const opDef = TELCO_OPERATORS.find(o => o.id === curOp) || TELCO_OPERATORS[0];
+    m.querySelectorAll('.reload-op-btn').forEach(btn => {
+      btn.classList.toggle('active', btn.dataset.op === curOp);
+    });
+    badgeEl.textContent = `${opDef.icon} ${opDef.name}`;
+    badgeEl.style.background = opDef.bg;
+    badgeEl.style.color = opDef.text;
+  };
+
+  // Auto-Operator Detection as customer types phone number
+  phoneEl.oninput = () => {
+    const raw = phoneEl.value.replace(/\D/g, '');
+    curPhone = phoneEl.value;
+
+    if (raw.length >= 3) {
+      const prefix = raw.slice(0, 3);
+      for (const op of TELCO_OPERATORS) {
+        if (op.prefixes.includes(prefix)) {
+          if (curOp !== op.id) {
+            curOp = op.id;
+            updateOperatorVisual();
+          }
+          break;
+        }
+      }
+    }
+  };
+
+  phoneEl.onkeydown = e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (!curAmount) {
+        amountEl.focus();
+        amountEl.select();
+      } else {
+        submitReload();
+      }
+    }
+  };
+
+  // Manual Operator Buttons
+  m.querySelectorAll('.reload-op-btn').forEach(btn => {
+    btn.onclick = () => {
+      curOp = btn.dataset.op;
+      if (curOp === 'Other') {
+        curType = 'Bill';
+        m.querySelectorAll('.btn-reload-type').forEach(tBtn => {
+          tBtn.classList.toggle('active', tBtn.dataset.type === 'Bill');
+          tBtn.classList.toggle('btn-ghost', tBtn.dataset.type !== 'Bill');
+        });
+        m.querySelector('#phoneFieldLabel').textContent = '2. Account / Connection Number *';
+        phoneEl.placeholder = 'e.g. 12345678 or 0112123456';
+      } else {
+        m.querySelector('#phoneFieldLabel').textContent = '2. Customer Mobile Number (10 Digits) *';
+        phoneEl.placeholder = '077 123 4567';
+      }
+      updateOperatorVisual();
+    };
+  });
+
+  // Reload Type Buttons (Call vs Data vs Bill)
+  m.querySelectorAll('.btn-reload-type').forEach(btn => {
+    btn.onclick = () => {
+      m.querySelectorAll('.btn-reload-type').forEach(b => {
+        b.classList.remove('active');
+        b.classList.add('btn-ghost');
+      });
+      btn.classList.add('active');
+      btn.classList.remove('btn-ghost');
+      curType = btn.dataset.type;
+
+      if (curType === 'Bill') {
+        m.querySelector('#phoneFieldLabel').textContent = '2. Account / Connection Number *';
+        phoneEl.placeholder = 'e.g. 12345678 or 0112123456';
+      } else {
+        m.querySelector('#phoneFieldLabel').textContent = '2. Customer Mobile Number (10 Digits) *';
+        phoneEl.placeholder = '077 123 4567';
+      }
+    };
+  });
+
+  // Amount input
+  amountEl.oninput = () => {
+    curAmount = Math.max(0, +amountEl.value || 0);
+    updatePreview();
+  };
+  amountEl.onkeydown = e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submitReload();
+    }
+  };
+
+  // Quick Amount Chips
+  m.querySelectorAll('.reload-quick-chip').forEach(btn => {
+    btn.onclick = () => {
+      curAmount = +btn.dataset.val;
+      amountEl.value = curAmount;
+      updatePreview();
+      amountEl.focus();
+      amountEl.select();
+    };
+  });
+
+  const submitReload = () => {
+    const amt = parseFloat(curAmount);
+    if (!amt || amt <= 0) {
+      toast('Please enter a valid reload amount', 1);
+      amountEl.focus();
+      return;
+    }
+    const phone = curPhone.trim() || 'Prepaid';
+    const lineName = `${curOp} (${curType}) - ${phone}`;
+
+    onAdd({
+      name: lineName,
+      price: amt,
+      qty: 1,
+      isService: true
+    });
+    m.close();
+    toast(`✓ Added ${lineName} (LKR ${amt.toFixed(2)}) to Current Bill`, 0);
+  };
+
+  m.querySelector('#btnAddReloadToBill').onclick = submitReload;
+  m.querySelectorAll('[data-x]').forEach(el => el.onclick = m.close);
+
+  updateOperatorVisual();
+  updatePreview();
+  setTimeout(() => phoneEl?.focus(), 60);
+}
+
+
+/* ==========================================================================
    QUICK CUSTOM ITEM MODAL (OPEN PRICE ITEM - F3)
    ========================================================================== */
 function showQuickCustomItemModal(onAdd) {
@@ -2747,22 +3030,27 @@ async function vPos() {
       <!-- Left: Fast Catalog & Search Section -->
       <section class="pos-catalog">
         <!-- Search Bar with Auto-Type Hint and Shortcuts -->
-        <div class="pos-search-bar" style="display:flex; gap:10px; align-items:center;">
-          <div class="pos-search-bar-wrap" style="flex:1;">
+        <div class="pos-search-bar">
+          <div class="pos-search-bar-wrap">
             <svg class="pos-search-icon" viewBox="0 0 24 24"><circle cx="11" cy="11" r="8"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
             <input id="q" placeholder="${t('searchPos')}" autofocus autocomplete="off">
             <span class="pos-shortcut-hint-pill">Type to search</span>
           </div>
 
-          <button type="button" class="btn btn-primary" id="btnPosCalc" title="Photocopy & Printing Calculator (Alt+C)" style="display:flex; align-items:center; gap:6px; font-weight:800; white-space:nowrap; padding:10px 16px; border-radius:12px; background:linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%); border:none; box-shadow:0 4px 12px rgba(99,102,241,0.35);">
-            <span>🖨️ Copy / Print</span>
-          </button>
-          <button type="button" class="btn btn-secondary" id="btnPosCustom" title="Quick Custom Item (Alt+I)" style="display:flex; align-items:center; gap:6px; font-weight:700; white-space:nowrap; padding:10px 14px; border-radius:12px;">
-            <span>⚡ Custom Item</span>
-          </button>
-          <button type="button" class="btn btn-secondary" id="btnPosReturn" title="Customer Return & Refund (Alt+R)" style="display:flex; align-items:center; gap:6px; font-weight:700; white-space:nowrap; padding:10px 14px; border-radius:12px; color:var(--bad); border:1px solid rgba(239,68,68,0.25); background:rgba(239,68,68,0.06);">
-            <span>↩️ Return / Refund</span>
-          </button>
+          <div class="pos-action-btn-group">
+            <button type="button" class="btn btn-primary pos-quick-action-btn pos-btn-reload" id="btnPosReload" title="Mobile Reload & Bill Payment (Alt+L)">
+              <span>📱 Reload</span>
+            </button>
+            <button type="button" class="btn btn-primary pos-quick-action-btn" id="btnPosCalc" title="Photocopy & Printing Calculator (Alt+C)">
+              <span>🖨️ Copy / Print</span>
+            </button>
+            <button type="button" class="btn btn-secondary pos-quick-action-btn" id="btnPosCustom" title="Quick Custom Item (Alt+I)">
+              <span>⚡ Custom Item</span>
+            </button>
+            <button type="button" class="btn btn-secondary pos-quick-action-btn pos-btn-return" id="btnPosReturn" title="Customer Return & Refund (Alt+R)">
+              <span>↩️ Return</span>
+            </button>
+          </div>
         </div>
 
         <!-- Category Chips -->
@@ -2799,32 +3087,32 @@ async function vPos() {
         <div class="cart-summary">
           <!-- Subtotal -->
           <div class="cart-sum-row">
-            <span class="muted">${t('subtotal')}</span>
-            <b id="posSubtot" style="font-size:16px;">LKR 0.00</b>
+            <span class="muted" style="font-size:13.5px; font-weight:700;">${t('subtotal')}</span>
+            <b id="posSubtot" style="font-size:17px; font-weight:900;">LKR 0.00</b>
           </div>
 
           <!-- Bill Discount Input Field -->
           <div class="discount-field-row" id="discountFieldRow">
             <div style="display:flex; flex-direction:column;">
-              <span style="font-size:13px; font-weight:700;">${t('billDiscount')}</span>
+              <span style="font-size:13.5px; font-weight:800;">${t('billDiscount')}</span>
               <small class="muted" style="font-size:10.5px;">Enter moves to Payment Method ↵</small>
             </div>
             <input id="posDiscount" type="number" min="0" step="1" value="0" placeholder="0">
           </div>
 
-          <!-- Massive High-Contrast Grand Total Banner -->
+          <!-- High-Contrast Grand Total Banner -->
           <div class="total-payable-banner">
             <div>
               <div class="total-banner-label">${t('total')}</div>
-              <small style="font-size:10px; color:#a5b4fc;">Net Payable Amount</small>
+              <small style="font-size:11px; color:#a5b4fc;">Net Payable Amount</small>
             </div>
             <div class="total-banner-amount" id="tot">LKR 0.00</div>
           </div>
 
           <!-- Payment Method Selector: Cash vs Card vs Split -->
-          <div style="display:flex; flex-direction:column; gap:6px;">
+          <div style="display:flex; flex-direction:column; gap:5px;">
             <div style="display:flex; justify-content:space-between; align-items:center;">
-              <span class="field-label" style="font-size:11px; text-transform:uppercase; font-weight:800;">${t('paymentMethod')}</span>
+              <span class="field-label" style="font-size:11.5px; text-transform:uppercase; font-weight:800;">${t('paymentMethod')}</span>
               <small class="muted" style="font-size:10.5px;">Use ← / → Arrow keys · Enter to confirm</small>
             </div>
             <div class="pay-method-toggle" id="payMethodToggle" tabindex="0">
@@ -2841,26 +3129,26 @@ async function vPos() {
           </div>
 
           <!-- Split Payment Breakdown (Only visible in Split mode) -->
-          <div id="splitFieldsWrap" class="hide" style="display:flex; flex-direction:column; gap:8px; padding:12px; background:var(--bg-card-subtle); border-radius:12px; border:1px solid var(--border-card); margin-bottom:4px;">
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:10px;">
+          <div id="splitFieldsWrap" class="hide" style="display:flex; flex-direction:column; gap:6px; padding:10px 12px; background:var(--bg-card-subtle); border-radius:10px; border:1px solid var(--border-card); margin-bottom:2px;">
+            <div style="display:grid; grid-template-columns: 1fr 1fr; gap:8px;">
               <div>
                 <span class="field-label" style="font-size:11px; font-weight:800; display:block; margin-bottom:4px;">💵 Cash Portion (LKR) *</span>
-                <input id="splitCash" type="number" min="0" step="10" placeholder="0.00" style="width:100%; font-weight:800; height:38px;">
+                <input id="splitCash" type="number" min="0" step="10" placeholder="0.00" style="width:100%; font-weight:800; height:36px;">
               </div>
               <div>
                 <span class="field-label" style="font-size:11px; font-weight:800; display:block; margin-bottom:4px;">💳 Card Portion (LKR)</span>
-                <input id="splitCard" type="text" readonly placeholder="0.00" style="width:100%; font-weight:800; height:38px; background:var(--bg-input); color:var(--brand); border-color:var(--brand);">
+                <input id="splitCard" type="text" readonly placeholder="0.00" style="width:100%; font-weight:800; height:36px; background:var(--bg-input); color:var(--brand); border-color:var(--brand);">
               </div>
             </div>
-            <small class="muted" style="font-size:11px;">Enter cash portion. Remainder will be charged to card terminal.</small>
+            <small class="muted" style="font-size:10.5px;">Enter cash portion. Remainder will be charged to card terminal.</small>
           </div>
 
           <!-- Cash Received Inputs (Visible in Cash and Split mode) -->
-          <div id="cashFieldsWrap" style="display:flex; flex-direction:column; gap:8px;">
+          <div id="cashFieldsWrap" style="display:flex; flex-direction:column; gap:6px;">
             <div class="cash-received-box">
               <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:4px;">
-                <span class="field-label" id="cashReceivedLabel" style="font-weight:800;">${t('cashReceived')} (LKR) *</span>
-                <small class="muted" style="font-size:11px;">Press Enter to Complete ↵</small>
+                <span class="field-label" id="cashReceivedLabel" style="font-weight:800; font-size:12.5px;">${t('cashReceived')} (LKR) *</span>
+                <small class="muted" style="font-size:10.5px;">Press Enter to Complete ↵</small>
               </div>
               <input id="paid" type="text" inputmode="decimal" placeholder="0.00" autocomplete="off">
             </div>
@@ -2884,12 +3172,12 @@ async function vPos() {
             <svg viewBox="0 0 24 24" width="22" height="22" stroke="currentColor" fill="none"><rect x="1" y="4" width="22" height="16" rx="2"/><line x1="1" y1="10" x2="23" y2="10"/></svg>
             <div>
               <div style="font-weight:800;">${t('cardReady')}</div>
-              <small style="font-size:10.5px; opacity:0.85;">Charge <b id="cardChargeAmount">LKR 0.00</b> on card terminal and press Enter to Complete Sale.</small>
+              <small style="font-size:11px; opacity:0.85;">Charge <b id="cardChargeAmount">LKR 0.00</b> on card terminal and press Enter to Complete Sale.</small>
             </div>
           </div>
 
           <!-- Complete Sale Button -->
-          <button id="pay" class="btn btn-primary btn-lg btn-block" style="font-size:16px; font-weight:800; padding:14px; border-radius:12px;">
+          <button id="pay" class="btn btn-primary btn-block">
             ✓ ${t('checkout')}
           </button>
         </div>
@@ -3285,6 +3573,7 @@ async function vPos() {
     drawGrid();
   };
 
+  $('#btnPosReload').onclick = () => showReloadModal(customLine => add(null, customLine));
   $('#btnPosCalc').onclick = () => showPrintServiceCalculator(customLine => add(null, customLine));
   $('#btnPosCustom').onclick = () => showQuickCustomItemModal(customLine => add(null, customLine));
   $('#btnPosReturn').onclick = () => openReturnRefundModal();
@@ -3373,6 +3662,11 @@ async function vPos() {
     // 1. NON-F SHORTCUTS (Alt Key Combos for tools)
     if (e.altKey && !e.ctrlKey && !e.metaKey) {
       const k = e.key.toLowerCase();
+      if (k === 'l' || k === 'm') {
+        e.preventDefault();
+        showReloadModal(customLine => add(null, customLine));
+        return;
+      }
       if (k === 'c') {
         e.preventDefault();
         showPrintServiceCalculator(customLine => add(null, customLine));
@@ -3419,6 +3713,11 @@ async function vPos() {
     if (e.key === 'F4') {
       e.preventDefault();
       openReturnRefundModal();
+      return;
+    }
+    if (e.key === 'F6') {
+      e.preventDefault();
+      showReloadModal(customLine => add(null, customLine));
       return;
     }
     if (e.key === 'F8') {
@@ -3660,7 +3959,7 @@ async function vPos() {
       if (!visible.length) return;
 
       const gridEl = $('#grid');
-      const cols = Math.max(1, Math.floor((gridEl?.clientWidth || 600) / 190)) || 3;
+      const cols = (window.innerWidth <= 1100 ? 4 : 5);
 
       if (e.key === 'ArrowRight') {
         e.preventDefault();
@@ -5885,6 +6184,26 @@ const REPORTS = {
       ['Transactions Count', r => `<span class="pill info">${r.Bills} transactions</span>`],
       ['Total Collected', r => `<b style="color:var(--brand); font-size:14px;">${fmt(r.Total)}</b>`]
     ]
+  ],
+  reloads: [
+    'reloadsReport',
+    () => [
+      ['Invoice No', r => `<code style="font-size:11.5px; font-weight:800; color:var(--brand);">${esc(r.InvoiceNo || 'INV-' + String(r.Id).padStart(6, '0'))}</code>`],
+      ['Reload / Bill Details', r => `<b>${esc(r.ItemName)}</b>`],
+      ['Operator', r => {
+        const n = (r.ItemName || '').toLowerCase();
+        if (n.includes('dialog')) return '<span class="pill danger" style="background:#ffe4e6; color:#be123c; font-weight:800;">🔴 Dialog</span>';
+        if (n.includes('mobitel')) return '<span class="pill info" style="background:#dbeafe; color:#1d4ed8; font-weight:800;">🔵 Mobitel</span>';
+        if (n.includes('airtel')) return '<span class="pill danger" style="background:#fee2e2; color:#b91c1c; font-weight:800;">🔴 Airtel</span>';
+        if (n.includes('hutch')) return '<span class="pill warning" style="background:#ffedd5; color:#c2410c; font-weight:800;">🟠 Hutch</span>';
+        return '<span class="pill neutral" style="font-weight:800;">⚡ Utility Bill</span>';
+      }],
+      [t('paymentMethod'), r => `<span class="pill neutral">${esc(r.PaymentMethod || 'Cash')}</span>`],
+      ['Amount (LKR)', r => `<b style="font-size:13.5px;">${fmt(r.Amount)}</b>`],
+      ['Est. Profit (4%)', r => `<b style="color:#10b981; font-size:13px;">+${fmt(r.Amount * 0.04)}</b>`],
+      ['Cashier', r => `<span class="small muted">${esc(r.Cashier || 'Admin')}</span>`],
+      [t('date'), r => `<span class="small muted">${r.Day}</span>`]
+    ]
   ]
 };
 
@@ -5931,6 +6250,7 @@ async function vReports() {
             <option value="supplier_return_items">📋 Supplier Return Item Details</option>
             <option value="categories">🏷️ Sales by Category & Service</option>
             <option value="payments">💳 Payment Methods Split (Cash vs Card)</option>
+            <option value="reloads">📱 Mobile Reloads & Telco Bill Summary</option>
           </select>
         </div>
 
@@ -5980,30 +6300,35 @@ async function vReports() {
 
       currentRows = await call('reports:' + currentReportKey, { from: fromVal, to: toVal });
 
-      const grandTotal = currentRows.reduce((s, r) => s + Number(r.Total || 0), 0);
+      const isReloadsReport = currentReportKey === 'reloads';
+      const grandTotal = isReloadsReport
+        ? currentRows.reduce((s, r) => s + Number(r.Amount || 0), 0)
+        : currentRows.reduce((s, r) => s + Number(r.Total || 0), 0);
+      const estProfit = isReloadsReport ? grandTotal * 0.04 : 0;
       const totalUnits = currentRows.reduce((s, r) => s + Number(r.TotalQty || r.Qty || r.Bills || 0), 0);
 
       const isReturnReport = currentReportKey === 'returns';
       const isSupplierReturn = currentReportKey.startsWith('supplier_return');
       const isGrnReport = currentReportKey.startsWith('grn');
 
-      const volumeLabel = isGrnReport ? 'Goods Received Volume' : (isReturnReport || isSupplierReturn) ? 'Items Returned Volume' : 'Total Volume / Units';
-      const volumeSub = isGrnReport ? 'Total physical units received' : isSupplierReturn ? 'Units returned to vendor' : isReturnReport ? 'Units processed for refund' : 'Total volume handled';
-      const totalAmountLabel = isReturnReport ? 'Total Customer Refund' : isSupplierReturn ? 'Total Supplier Debit' : isGrnReport ? 'Total Supplier Cost' : 'Grand Total Revenue';
-      const themeColor = isReturnReport ? 'var(--bad)' : isSupplierReturn ? 'var(--accent-amber, #f59e0b)' : 'var(--brand)';
+      const volumeLabel = isReloadsReport ? 'Est. Telco Commission (4%)' : isGrnReport ? 'Goods Received Volume' : (isReturnReport || isSupplierReturn) ? 'Items Returned Volume' : 'Total Volume / Units';
+      const volumeSub = isReloadsReport ? 'Net profit earned by bookshop' : isGrnReport ? 'Total physical units received' : isSupplierReturn ? 'Units returned to vendor' : isReturnReport ? 'Units processed for refund' : 'Total volume handled';
+      const volumeDisplay = isReloadsReport ? `+${fmt(estProfit)}` : totalUnits.toLocaleString();
+      const totalAmountLabel = isReloadsReport ? 'Total Reload & Bill Volume' : isReturnReport ? 'Total Customer Refund' : isSupplierReturn ? 'Total Supplier Debit' : isGrnReport ? 'Total Supplier Cost' : 'Grand Total Revenue';
+      const themeColor = isReloadsReport ? '#10b981' : isReturnReport ? 'var(--bad)' : isSupplierReturn ? 'var(--accent-amber, #f59e0b)' : 'var(--brand)';
 
       $('#reportSummaryCards').innerHTML = `
         <div class="panel-card" style="display:flex; flex-direction:column; gap:4px;">
           <span class="muted small" style="text-transform:uppercase; font-weight:800; font-size:11px;">Total Entries</span>
-          <h3 style="margin:0; font-size:20px; font-weight:800;">${currentRows.length} Records</h3>
+          <h3 style="margin:0; font-size:20px; font-weight:800;">${currentRows.length} ${isReloadsReport ? 'Reloads' : 'Records'}</h3>
           <small class="muted">Matching selected date range</small>
         </div>
 
-        <div class="panel-card" style="display:flex; flex-direction:column; gap:4px;">
-          <span class="muted small" style="text-transform:uppercase; font-weight:800; font-size:11px;">
+        <div class="panel-card" style="display:flex; flex-direction:column; gap:4px; ${isReloadsReport ? 'border-left:4px solid #10b981;' : ''}">
+          <span class="muted small" style="text-transform:uppercase; font-weight:800; font-size:11px; ${isReloadsReport ? 'color:#10b981;' : ''}">
             ${volumeLabel}
           </span>
-          <h3 style="margin:0; font-size:20px; font-weight:800;">${totalUnits.toLocaleString()}</h3>
+          <h3 style="margin:0; font-size:20px; font-weight:800; ${isReloadsReport ? 'color:#10b981;' : ''}">${volumeDisplay}</h3>
           <small class="muted">${volumeSub}</small>
         </div>
 

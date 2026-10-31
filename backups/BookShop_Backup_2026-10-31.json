@@ -1,0 +1,753 @@
+{
+  "app": "Amectar BookShop POS",
+  "version": "2.0",
+  "database": "BookShop",
+  "backupDate": "2026-10-31",
+  "lastUpdated": "2026-10-31T05:27:43.059Z",
+  "lastUpdatedFormatted": "2026-10-31 10:57:43",
+  "frequency": "Hourly (Updated into same daily file)",
+  "stats": {
+    "usersCount": 1,
+    "itemsCount": 45,
+    "categoriesCount": 10,
+    "salesCount": 0,
+    "saleItemsCount": 0,
+    "grnCount": 0,
+    "returnsCount": 0,
+    "supplierReturnsCount": 0,
+    "paymentsCount": 0
+  },
+  "data": {
+    "Users": [
+      {
+        "Id": 1,
+        "Username": "admin",
+        "FullName": "Super Admin",
+        "Role": "Super Admin",
+        "Active": true,
+        "Permissions": "*",
+        "PasswordHash": "$2a$10$H0ijtHpLz/AtyUZMH5HoB.rpG43h6ONjXE38jclI5Vh2nzwm4yx5q"
+      }
+    ],
+    "Categories": [
+      {
+        "Id": 1,
+        "Name": "Stationery",
+        "Icon": "??",
+        "CreatedAt": "2026-10-30T10:27:06.146Z"
+      },
+      {
+        "Id": 2,
+        "Name": "Books",
+        "Icon": "📚",
+        "CreatedAt": "2026-10-30T10:27:06.146Z"
+      },
+      {
+        "Id": 3,
+        "Name": "Toys & Keytags",
+        "Icon": "??",
+        "CreatedAt": "2026-10-30T10:27:06.146Z"
+      },
+      {
+        "Id": 4,
+        "Name": "Photocopy & Print",
+        "Icon": "???",
+        "CreatedAt": "2026-10-30T10:27:06.146Z"
+      },
+      {
+        "Id": 5,
+        "Name": "Lamination & Binding",
+        "Icon": "??",
+        "CreatedAt": "2026-10-30T10:27:06.146Z"
+      },
+      {
+        "Id": 6,
+        "Name": "Typing & Services",
+        "Icon": "??",
+        "CreatedAt": "2026-10-30T10:27:06.146Z"
+      },
+      {
+        "Id": 7,
+        "Name": "Paper & Files",
+        "Icon": "??",
+        "CreatedAt": "2026-10-30T10:27:06.146Z"
+      },
+      {
+        "Id": 8,
+        "Name": "Gift Items & Art",
+        "Icon": "??",
+        "CreatedAt": "2026-10-30T10:27:06.146Z"
+      },
+      {
+        "Id": 9,
+        "Name": "General",
+        "Icon": "📖",
+        "CreatedAt": "2026-10-30T10:27:06.146Z"
+      },
+      {
+        "Id": 1002,
+        "Name": "Mobile Reloads & Bills",
+        "Icon": "??",
+        "CreatedAt": "2026-10-31T05:27:37.888Z"
+      }
+    ],
+    "Items": [
+      {
+        "Id": 1,
+        "Name": "Atlas Chooty Pen Blue",
+        "Category": "Stationery",
+        "Price": 40,
+        "Stock": 200,
+        "Barcode": "8901234001",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 2,
+        "Name": "Atlas Chooty Pen Black",
+        "Category": "Stationery",
+        "Price": 40,
+        "Stock": 200,
+        "Barcode": "8901234002",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 3,
+        "Name": "Atlas Chooty Pen Red",
+        "Category": "Stationery",
+        "Price": 40,
+        "Stock": 100,
+        "Barcode": "8901234003",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 4,
+        "Name": "Natraj 2B Pencil",
+        "Category": "Stationery",
+        "Price": 30,
+        "Stock": 250,
+        "Barcode": "8901234020",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 5,
+        "Name": "Maped Technic Eraser",
+        "Category": "Stationery",
+        "Price": 25,
+        "Stock": 180,
+        "Barcode": "8901234025",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 6,
+        "Name": "Plastic Ruler 30cm",
+        "Category": "Stationery",
+        "Price": 60,
+        "Stock": 100,
+        "Barcode": "8901234030",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 7,
+        "Name": "Mathematical Instrument Box",
+        "Category": "Stationery",
+        "Price": 450,
+        "Stock": 40,
+        "Barcode": "8901234035",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 8,
+        "Name": "Atlas CR Book 80 Pgs Single Rule",
+        "Category": "Stationery",
+        "Price": 180,
+        "Stock": 120,
+        "Barcode": "8901234010",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 9,
+        "Name": "Atlas CR Book 120 Pgs Single Rule",
+        "Category": "Stationery",
+        "Price": 260,
+        "Stock": 100,
+        "Barcode": "8901234011",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 10,
+        "Name": "Atlas CR Book 200 Pgs Hard Cover",
+        "Category": "Stationery",
+        "Price": 420,
+        "Stock": 80,
+        "Barcode": "8901234013",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 11,
+        "Name": "Exercise Book 80 Pgs Single Rule",
+        "Category": "Stationery",
+        "Price": 110,
+        "Stock": 150,
+        "Barcode": "8901234015",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 12,
+        "Name": "Exercise Book 80 Pgs Square Rule",
+        "Category": "Stationery",
+        "Price": 110,
+        "Stock": 150,
+        "Barcode": "8901234016",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 13,
+        "Name": "A4 Paper Ream 80gsm (500 Sheets)",
+        "Category": "Stationery",
+        "Price": 1850,
+        "Stock": 35,
+        "Barcode": "8901234050",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 14,
+        "Name": "UHU Glue Stick 8.2g",
+        "Category": "Stationery",
+        "Price": 190,
+        "Stock": 70,
+        "Barcode": "8901234040",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 15,
+        "Name": "Clear Box File A4",
+        "Category": "Stationery",
+        "Price": 380,
+        "Stock": 50,
+        "Barcode": "8901234060",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 16,
+        "Name": "Grade 5 Scholarship Model Papers",
+        "Category": "Books",
+        "Price": 450,
+        "Stock": 50,
+        "Barcode": "9789551234011",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 17,
+        "Name": "O/L Mathematics Past Papers (10 Yrs)",
+        "Category": "Books",
+        "Price": 650,
+        "Stock": 35,
+        "Barcode": "9789551234028",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 18,
+        "Name": "O/L Science Past Papers & Answers",
+        "Category": "Books",
+        "Price": 680,
+        "Stock": 35,
+        "Barcode": "9789551234035",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 19,
+        "Name": "English-Sinhala Pocket Dictionary",
+        "Category": "Books",
+        "Price": 550,
+        "Stock": 25,
+        "Barcode": "9789551234042",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 20,
+        "Name": "Children Illustrated Story Book",
+        "Category": "Books",
+        "Price": 250,
+        "Stock": 45,
+        "Barcode": "9789551234059",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 21,
+        "Name": "Cartoon Rubber Keytag",
+        "Category": "Toys & Keytags",
+        "Price": 150,
+        "Stock": 80,
+        "Barcode": "KTG-001",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 22,
+        "Name": "Metal Luxury Keytag",
+        "Category": "Toys & Keytags",
+        "Price": 220,
+        "Stock": 60,
+        "Barcode": "KTG-002",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 23,
+        "Name": "Die-Cast Mini Pullback Toy Car",
+        "Category": "Toys & Keytags",
+        "Price": 350,
+        "Stock": 40,
+        "Barcode": "TOY-001",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 24,
+        "Name": "3x3 Speed Magic Rubik Cube",
+        "Category": "Toys & Keytags",
+        "Price": 480,
+        "Stock": 30,
+        "Barcode": "TOY-002",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 25,
+        "Name": "Bubble Wand Soap Blower",
+        "Category": "Toys & Keytags",
+        "Price": 120,
+        "Stock": 60,
+        "Barcode": "TOY-003",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 26,
+        "Name": "Decorative Gift Wrapping Sheet",
+        "Category": "Toys & Keytags",
+        "Price": 50,
+        "Stock": 150,
+        "Barcode": "GFT-001",
+        "ImageUrl": null,
+        "ItemType": "Product",
+        "IsService": false,
+        "Active": true
+      },
+      {
+        "Id": 27,
+        "Name": "Photocopy A4 B/W (Single Sided)",
+        "Category": "Photocopy & Print",
+        "Price": 10,
+        "Stock": 0,
+        "Barcode": "SRV-PC-A4S",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 28,
+        "Name": "Photocopy A4 B/W (Double Sided)",
+        "Category": "Photocopy & Print",
+        "Price": 15,
+        "Stock": 0,
+        "Barcode": "SRV-PC-A4D",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 29,
+        "Name": "Photocopy A3 B/W",
+        "Category": "Photocopy & Print",
+        "Price": 25,
+        "Stock": 0,
+        "Barcode": "SRV-PC-A3",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 30,
+        "Name": "Color Photocopy / Print A4",
+        "Category": "Photocopy & Print",
+        "Price": 50,
+        "Stock": 0,
+        "Barcode": "SRV-PR-A4C",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 31,
+        "Name": "Color Photocopy / Print A3",
+        "Category": "Photocopy & Print",
+        "Price": 120,
+        "Stock": 0,
+        "Barcode": "SRV-PR-A3C",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 32,
+        "Name": "Computer Document Print A4 B/W",
+        "Category": "Photocopy & Print",
+        "Price": 15,
+        "Stock": 0,
+        "Barcode": "SRV-PR-A4BW",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 33,
+        "Name": "Passport / Photo Print (4 Copies)",
+        "Category": "Photocopy & Print",
+        "Price": 200,
+        "Stock": 0,
+        "Barcode": "SRV-PR-PHOTO",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 34,
+        "Name": "ID Card / License Lamination",
+        "Category": "Lamination & Binding",
+        "Price": 80,
+        "Stock": 0,
+        "Barcode": "SRV-LAM-ID",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 35,
+        "Name": "A4 Document / Certificate Lamination",
+        "Category": "Lamination & Binding",
+        "Price": 150,
+        "Stock": 0,
+        "Barcode": "SRV-LAM-A4",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 36,
+        "Name": "A3 Document / Poster Lamination",
+        "Category": "Lamination & Binding",
+        "Price": 300,
+        "Stock": 0,
+        "Barcode": "SRV-LAM-A3",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 37,
+        "Name": "Spiral Binding Small (Up to 50 pgs)",
+        "Category": "Lamination & Binding",
+        "Price": 180,
+        "Stock": 0,
+        "Barcode": "SRV-BND-SM",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 38,
+        "Name": "Spiral Binding Large (50-150 pgs)",
+        "Category": "Lamination & Binding",
+        "Price": 280,
+        "Stock": 0,
+        "Barcode": "SRV-BND-LG",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 39,
+        "Name": "Sinhala Letter Typing (Per Page)",
+        "Category": "Typing & Services",
+        "Price": 200,
+        "Stock": 0,
+        "Barcode": "SRV-TYP-SIN",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 40,
+        "Name": "English Letter / Agreement Typing",
+        "Category": "Typing & Services",
+        "Price": 150,
+        "Stock": 0,
+        "Barcode": "SRV-TYP-ENG",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 41,
+        "Name": "Professional CV / Resume Creation",
+        "Category": "Typing & Services",
+        "Price": 500,
+        "Stock": 0,
+        "Barcode": "SRV-TYP-CV",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 42,
+        "Name": "Document Scanning to PDF / Email",
+        "Category": "Typing & Services",
+        "Price": 30,
+        "Stock": 0,
+        "Barcode": "SRV-SCN-PDF",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 43,
+        "Name": "Exam Paper / Book Typesetting",
+        "Category": "Typing & Services",
+        "Price": 180,
+        "Stock": 0,
+        "Barcode": "SRV-TYP-SET",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 44,
+        "Name": "General Custom Service / Open Job",
+        "Category": "Typing & Services",
+        "Price": 100,
+        "Stock": 0,
+        "Barcode": "SRV-CUSTOM",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      },
+      {
+        "Id": 1002,
+        "Name": "Mobile Reload & Bill Payment (Dialog, Mobitel, Airtel, Hutch)",
+        "Category": "Mobile Reloads & Bills",
+        "Price": 100,
+        "Stock": 0,
+        "Barcode": "SRV-RELOAD",
+        "ImageUrl": null,
+        "ItemType": "Service",
+        "IsService": true,
+        "Active": true
+      }
+    ],
+    "Sales": [],
+    "SaleItems": [],
+    "Settings": [
+      {
+        "Key": "accName",
+        "Value": "H.A Aman Manthira Hapuarachchi"
+      },
+      {
+        "Key": "accNumber",
+        "Value": "8030194935"
+      },
+      {
+        "Key": "backupPath",
+        "Value": "/home/aman/Desktop/Projects/Amectar/BookShopPOS/backups"
+      },
+      {
+        "Key": "bankBranch",
+        "Value": "Gampaha"
+      },
+      {
+        "Key": "bankName",
+        "Value": "Commercial Bank"
+      },
+      {
+        "Key": "bankNotes",
+        "Value": "Please state your store name and bill invoice ID as payment reference."
+      },
+      {
+        "Key": "dueDay",
+        "Value": "25"
+      },
+      {
+        "Key": "fee",
+        "Value": "3000"
+      },
+      {
+        "Key": "installedOn",
+        "Value": "2026-10-29T08:58:02.510Z"
+      },
+      {
+        "Key": "lastBackupFile",
+        "Value": "BookShop_Backup_2026-10-30.json"
+      },
+      {
+        "Key": "lastBackupSize",
+        "Value": "16184"
+      },
+      {
+        "Key": "lastBackupStatus",
+        "Value": "Success"
+      },
+      {
+        "Key": "lastBackupTime",
+        "Value": "2026-10-30T05:25:49.910Z"
+      },
+      {
+        "Key": "lastSeen",
+        "Value": "2026-10-31T05:27:38.172Z"
+      },
+      {
+        "Key": "receiptAutoPrint",
+        "Value": "1"
+      },
+      {
+        "Key": "receiptFooter",
+        "Value": "Thank you for shopping with us! Photocopy, Print & Lamination Available."
+      },
+      {
+        "Key": "receiptHeader",
+        "Value": "WELCOME TO AMECTAR BOOKSHOP"
+      },
+      {
+        "Key": "receiptPaperWidth",
+        "Value": "80mm"
+      },
+      {
+        "Key": "shopAddress",
+        "Value": "No. 45, Station Road, Colombo"
+      },
+      {
+        "Key": "shopName",
+        "Value": "Amectar Bookshop & Communication"
+      },
+      {
+        "Key": "shopPhone",
+        "Value": "071 234 5678 / 011 234 5678"
+      },
+      {
+        "Key": "shopTagline",
+        "Value": "Books, Stationery, Gifts & Print/Copy Services"
+      },
+      {
+        "Key": "shopTaxNo",
+        "Value": "BR-2024-BOOK99"
+      },
+      {
+        "Key": "subEnabled",
+        "Value": "1"
+      },
+      {
+        "Key": "subFailedAttempts",
+        "Value": "0"
+      },
+      {
+        "Key": "subTamperLocked",
+        "Value": "0"
+      }
+    ],
+    "Payments": [],
+    "GRNs": [],
+    "GRNItems": [],
+    "SubscriptionCodes": [],
+    "Returns": [],
+    "ReturnItems": [],
+    "SupplierReturns": [],
+    "SupplierReturnItems": []
+  }
+}

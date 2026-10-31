@@ -81,7 +81,9 @@ const DEFAULT_BOOKSHOP_ITEMS = [
   { name: 'Professional CV / Resume Creation', category: 'Typing & Services', price: 500, stock: 0, barcode: 'SRV-TYP-CV', isService: 1 },
   { name: 'Document Scanning to PDF / Email', category: 'Typing & Services', price: 30, stock: 0, barcode: 'SRV-SCN-PDF', isService: 1 },
   { name: 'Exam Paper / Book Typesetting', category: 'Typing & Services', price: 180, stock: 0, barcode: 'SRV-TYP-SET', isService: 1 },
-  { name: 'General Custom Service / Open Job', category: 'Typing & Services', price: 100, stock: 0, barcode: 'SRV-CUSTOM', isService: 1 }
+  { name: 'General Custom Service / Open Job', category: 'Typing & Services', price: 100, stock: 0, barcode: 'SRV-CUSTOM', isService: 1 },
+  // Mobile Reloads & Telco Bill Payments (IsService = 1, Stock = 0)
+  { name: 'Mobile Reload & Bill Payment (Dialog, Mobitel, Airtel, Hutch)', category: 'Mobile Reloads & Bills', price: 100, stock: 0, barcode: 'SRV-RELOAD', isService: 1 }
 ];
 
 async function seedBookshopCatalog(txOrPool) {
@@ -147,7 +149,20 @@ async function initDb() {
       ('Typing & Services', '⌨️'),
       ('Paper & Files', '📁'),
       ('Gift Items & Art', '🎁'),
+      ('Mobile Reloads & Bills', '📱'),
       ('General', '🌟');
+    END;
+
+    -- Ensure Mobile Reloads category and default service item exist
+    IF NOT EXISTS (SELECT 1 FROM Categories WHERE Name = 'Mobile Reloads & Bills')
+    BEGIN
+      INSERT INTO Categories(Name, Icon) VALUES('Mobile Reloads & Bills', '📱');
+    END;
+
+    IF NOT EXISTS (SELECT 1 FROM Items WHERE Barcode = 'SRV-RELOAD' OR Name LIKE '%Mobile Reload%')
+    BEGIN
+      INSERT INTO Items(Name, Category, Price, Stock, Barcode, ItemType, IsService, Active)
+      VALUES('Mobile Reload & Bill Payment (Dialog, Mobitel, Airtel, Hutch)', 'Mobile Reloads & Bills', 100, 0, 'SRV-RELOAD', 'Service', 1, 1);
     END;
 
     -- Sync any existing distinct categories from Items table
@@ -1412,6 +1427,25 @@ handle('reports:supplier_return_items', MA, async p => (await rng(p, pool.reques
    WHERE sr.CreatedAt >= CAST(@f AS DATE) AND sr.CreatedAt < DATEADD(day,1,CAST(@t AS DATE))
    ORDER BY Day DESC, Total DESC`)).recordset);
 
+handle('reports:reloads', MA, async p => (await rng(p, pool.request()).query(
+  `SELECT 
+     si.Id,
+     ISNULL(s.InvoiceNo, 'INV-' + RIGHT('000000' + CAST(s.Id AS VARCHAR), 6)) AS InvoiceNo,
+     s.CreatedAt,
+     CONVERT(VARCHAR(10), s.CreatedAt, 120) AS Day,
+     si.ItemName,
+     si.LineTotal AS Amount,
+     ISNULL(s.PaymentMethod, 'Cash') AS PaymentMethod,
+     u.FullName AS Cashier
+   FROM SaleItems si
+   JOIN Sales s ON s.Id = si.SaleId
+   LEFT JOIN Users u ON u.Id = s.CashierId
+   LEFT JOIN Items i ON i.Id = si.ItemId
+   WHERE (i.Category = 'Mobile Reloads & Bills' OR si.ItemName LIKE '%Reload%' OR si.ItemName LIKE '%Mobitel%' OR si.ItemName LIKE '%Dialog%' OR si.ItemName LIKE '%Airtel%' OR si.ItemName LIKE '%Hutch%')
+     AND s.CreatedAt >= CAST(@f AS DATE) AND s.CreatedAt < DATEADD(day, 1, CAST(@t AS DATE))
+   ORDER BY s.Id DESC`
+)).recordset);
+
 /* ---------- Dashboard & GRN ---------- */
 handle('dashboard:overview', ALL, async () => {
   const q = () => pool.request();
@@ -1784,7 +1818,7 @@ handle('supplierReturns:create', MA, async ({ returnNo, grnId, grnNo, supplier, 
 /* ---------- Window ---------- */
 function createWindow() {
   const w = new BrowserWindow({
-    width: 1366, height: 820, minWidth: 1100, minHeight: 680, title: 'Kade POS',
+    width: 1366, height: 820, minWidth: 1024, minHeight: 640, title: 'Amectar BookShop & Services POS',
     webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, nodeIntegration: false, sandbox: true }
   });
   w.setMenuBarVisibility(false);
