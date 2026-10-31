@@ -2038,11 +2038,66 @@ function showPrintServiceCalculator(onAdd) {
    ========================================================================== */
 function showReloadModal(onAdd) {
   const TELCO_OPERATORS = [
-    { id: 'Dialog', name: 'Dialog', dot: '#e11d48', bg: '#ffe4e6', text: '#be123c', prefixes: ['077', '076', '074'], icon: '🔴' },
-    { id: 'Mobitel', name: 'Mobitel', dot: '#2563eb', bg: '#dbeafe', text: '#1d4ed8', prefixes: ['071', '070'], icon: '🔵' },
-    { id: 'Airtel', name: 'Airtel', dot: '#dc2626', bg: '#fee2e2', text: '#b91c1c', prefixes: ['075'], icon: '🔴' },
-    { id: 'Hutch', name: 'Hutch', dot: '#ea580c', bg: '#ffedd5', text: '#c2410c', prefixes: ['078', '072'], icon: '🟠' },
-    { id: 'Other', name: 'Other / Utility', dot: '#8b5cf6', bg: '#ede9fe', text: '#6d28d9', prefixes: [], icon: '⚡' }
+    {
+      id: 'Dialog',
+      name: 'Dialog',
+      logo: 'assets/telco/dialog.png',
+      dot: '#e11d48',
+      bg: '#ffe4e6',
+      text: '#be123c',
+      border: '#f43f5e',
+      glow: 'rgba(225, 29, 72, 0.25)',
+      prefixes: ['077', '076', '074'],
+      icon: '🔴'
+    },
+    {
+      id: 'Mobitel',
+      name: 'Mobitel',
+      logo: 'assets/telco/mobitel.png',
+      dot: '#0284c7',
+      bg: '#e0f2fe',
+      text: '#0369a1',
+      border: '#0284c7',
+      glow: 'rgba(2, 132, 199, 0.25)',
+      prefixes: ['071', '070'],
+      icon: '🔵'
+    },
+    {
+      id: 'Airtel',
+      name: 'Airtel',
+      logo: 'assets/telco/airtel.png',
+      dot: '#dc2626',
+      bg: '#fee2e2',
+      text: '#b91c1c',
+      border: '#dc2626',
+      glow: 'rgba(220, 38, 38, 0.25)',
+      prefixes: ['075'],
+      icon: '🔴'
+    },
+    {
+      id: 'Hutch',
+      name: 'Hutch',
+      logo: 'assets/telco/hutch.png',
+      dot: '#ea580c',
+      bg: '#ffedd5',
+      text: '#c2410c',
+      border: '#ea580c',
+      glow: 'rgba(234, 88, 12, 0.25)',
+      prefixes: ['078', '072'],
+      icon: '🟠'
+    },
+    {
+      id: 'Other',
+      name: 'Other / Utility',
+      logo: null,
+      dot: '#8b5cf6',
+      bg: '#ede9fe',
+      text: '#6d28d9',
+      border: '#8b5cf6',
+      glow: 'rgba(139, 92, 246, 0.25)',
+      prefixes: [],
+      icon: '⚡'
+    }
   ];
 
   const QUICK_AMOUNTS = [50, 100, 200, 350, 500, 1000, 2000];
@@ -2067,12 +2122,20 @@ function showReloadModal(onAdd) {
 
     <!-- 1. Select Telco Operator -->
     <div style="margin:14px 0 12px;">
-      <span class="field-label" style="display:block; margin-bottom:6px; font-size:11px; text-transform:uppercase; font-weight:800; letter-spacing:0.5px;">1. Select Telco Operator</span>
-      <div id="reloadOpBar" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:8px;">
+      <span class="field-label" style="display:block; margin-bottom:8px; font-size:11px; text-transform:uppercase; font-weight:800; letter-spacing:0.5px;">1. Select Telco Operator</span>
+      <div id="reloadOpBar" style="display:grid; grid-template-columns:repeat(5, 1fr); gap:10px;">
         ${TELCO_OPERATORS.map(op => `
-          <button type="button" class="reload-op-btn ${op.id === curOp ? 'active' : ''}" data-op="${op.id}" style="--op-color:${op.dot}; --op-bg:${op.bg}; --op-text:${op.text}; --op-dot:${op.dot};">
-            <span class="reload-badge-dot"></span>
-            <span>${op.name}</span>
+          <button type="button" class="reload-op-btn ${op.id === curOp ? 'active' : ''}" data-op="${op.id}" style="--op-color:${op.dot}; --op-bg:${op.bg}; --op-text:${op.text}; --op-border:${op.border}; --op-glow:${op.glow}; --op-dot:${op.dot};">
+            <div class="reload-op-logo-box">
+              ${op.logo 
+                ? `<img src="${op.logo}" alt="${op.name}" class="reload-op-logo-img">`
+                : `<span class="reload-op-util-icon">⚡</span>`
+              }
+            </div>
+            <div class="reload-op-label-wrap">
+              <span class="reload-badge-dot"></span>
+              <span class="reload-op-name">${op.name}</span>
+            </div>
           </button>
         `).join('')}
       </div>
@@ -2082,7 +2145,9 @@ function showReloadModal(onAdd) {
     <div style="margin-bottom:14px;">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;">
         <span class="field-label" id="phoneFieldLabel" style="font-size:11.5px; font-weight:800;">2. Customer Mobile Number (10 Digits) *</span>
-        <span id="detectedOpBadge" class="pill" style="font-size:11px; font-weight:800; background:#ffe4e6; color:#be123c;">🔴 Dialog Detected</span>
+        <span id="detectedOpBadge" class="pill" style="font-size:11px; font-weight:800; background:#ffe4e6; color:#be123c; display:inline-flex; align-items:center; gap:5px;">
+          <img src="assets/telco/dialog.png" style="height:14px; width:auto; max-width:40px; object-fit:contain; vertical-align:middle; background:#fff; padding:1px 4px; border-radius:3px;"> Dialog Detected
+        </span>
       </div>
       <input id="reloadPhone" type="tel" maxlength="15" placeholder="077 123 4567" autofocus autocomplete="off"
              style="width:100%; height:44px; font-size:18px; font-weight:800; padding:8px 14px; border-radius:10px;">
@@ -2169,7 +2234,11 @@ function showReloadModal(onAdd) {
     m.querySelectorAll('.reload-op-btn').forEach(btn => {
       btn.classList.toggle('active', btn.dataset.op === curOp);
     });
-    badgeEl.textContent = `${opDef.icon} ${opDef.name}`;
+    if (opDef.logo) {
+      badgeEl.innerHTML = `<img src="${opDef.logo}" style="height:14px; width:auto; max-width:40px; object-fit:contain; vertical-align:middle; background:#fff; padding:1px 4px; border-radius:3px;"> ${opDef.name} Detected`;
+    } else {
+      badgeEl.innerHTML = `<span style="font-size:12px;">⚡</span> ${opDef.name} Detected`;
+    }
     badgeEl.style.background = opDef.bg;
     badgeEl.style.color = opDef.text;
   };
@@ -6192,10 +6261,10 @@ const REPORTS = {
       ['Reload / Bill Details', r => `<b>${esc(r.ItemName)}</b>`],
       ['Operator', r => {
         const n = (r.ItemName || '').toLowerCase();
-        if (n.includes('dialog')) return '<span class="pill danger" style="background:#ffe4e6; color:#be123c; font-weight:800;">🔴 Dialog</span>';
-        if (n.includes('mobitel')) return '<span class="pill info" style="background:#dbeafe; color:#1d4ed8; font-weight:800;">🔵 Mobitel</span>';
-        if (n.includes('airtel')) return '<span class="pill danger" style="background:#fee2e2; color:#b91c1c; font-weight:800;">🔴 Airtel</span>';
-        if (n.includes('hutch')) return '<span class="pill warning" style="background:#ffedd5; color:#c2410c; font-weight:800;">🟠 Hutch</span>';
+        if (n.includes('dialog')) return '<span class="pill danger" style="background:#ffe4e6; color:#be123c; font-weight:800; display:inline-flex; align-items:center; gap:5px;"><img src="assets/telco/dialog.png" style="height:12px; background:#fff; padding:1px 3px; border-radius:3px;"> Dialog</span>';
+        if (n.includes('mobitel')) return '<span class="pill info" style="background:#dbeafe; color:#1d4ed8; font-weight:800; display:inline-flex; align-items:center; gap:5px;"><img src="assets/telco/mobitel.png" style="height:12px; background:#fff; padding:1px 3px; border-radius:3px;"> Mobitel</span>';
+        if (n.includes('airtel')) return '<span class="pill danger" style="background:#fee2e2; color:#b91c1c; font-weight:800; display:inline-flex; align-items:center; gap:5px;"><img src="assets/telco/airtel.png" style="height:12px; background:#fff; padding:1px 3px; border-radius:3px;"> Airtel</span>';
+        if (n.includes('hutch')) return '<span class="pill warning" style="background:#ffedd5; color:#c2410c; font-weight:800; display:inline-flex; align-items:center; gap:5px;"><img src="assets/telco/hutch.png" style="height:12px; background:#fff; padding:1px 3px; border-radius:3px;"> Hutch</span>';
         return '<span class="pill neutral" style="font-weight:800;">⚡ Utility Bill</span>';
       }],
       [t('paymentMethod'), r => `<span class="pill neutral">${esc(r.PaymentMethod || 'Cash')}</span>`],
