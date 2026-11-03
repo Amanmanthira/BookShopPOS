@@ -16,7 +16,7 @@ const r2 = x => Math.round(x * 100) / 100;
 
 const SCHEMA = [
 `IF OBJECT_ID('Users','U') IS NULL CREATE TABLE Users(Id INT IDENTITY PRIMARY KEY, Username NVARCHAR(50) NOT NULL UNIQUE, FullName NVARCHAR(100) NOT NULL, PasswordHash NVARCHAR(100) NOT NULL, Role NVARCHAR(20) NOT NULL CHECK (Role IN ('Cashier','Store Manager','Super Admin')), Active BIT NOT NULL DEFAULT 1, Permissions NVARCHAR(500) NULL)`,
-`IF OBJECT_ID('Items','U') IS NULL CREATE TABLE Items(Id INT IDENTITY PRIMARY KEY, Name NVARCHAR(100) NOT NULL, Category NVARCHAR(50) NOT NULL, Price DECIMAL(12,2) NOT NULL, Stock INT NOT NULL DEFAULT 0, Barcode NVARCHAR(50) NULL, ImageUrl NVARCHAR(500) NULL, ItemType NVARCHAR(20) NOT NULL DEFAULT 'Product', IsService BIT NOT NULL DEFAULT 0, Active BIT NOT NULL DEFAULT 1)`,
+`IF OBJECT_ID('Items','U') IS NULL CREATE TABLE Items(Id INT IDENTITY PRIMARY KEY, Name NVARCHAR(100) NOT NULL, Category NVARCHAR(50) NOT NULL, Price DECIMAL(12,2) NOT NULL, CostPrice DECIMAL(12,2) NULL DEFAULT 0, Stock INT NOT NULL DEFAULT 0, Barcode NVARCHAR(50) NULL, ImageUrl NVARCHAR(500) NULL, ItemType NVARCHAR(20) NOT NULL DEFAULT 'Product', IsService BIT NOT NULL DEFAULT 0, Active BIT NOT NULL DEFAULT 1)`,
 `IF OBJECT_ID('Sales','U') IS NULL CREATE TABLE Sales(Id INT IDENTITY PRIMARY KEY, InvoiceNo NVARCHAR(30) NULL, CashierId INT NOT NULL REFERENCES Users(Id), Total DECIMAL(12,2) NOT NULL, Paid DECIMAL(12,2) NOT NULL, Balance DECIMAL(12,2) NOT NULL, PaymentMethod NVARCHAR(20) NOT NULL DEFAULT 'Cash', Discount DECIMAL(12,2) NOT NULL DEFAULT 0, CreatedAt DATETIME2 NOT NULL DEFAULT SYSDATETIME())`,
 `IF OBJECT_ID('SaleItems','U') IS NULL CREATE TABLE SaleItems(Id INT IDENTITY PRIMARY KEY, SaleId INT NOT NULL REFERENCES Sales(Id), ItemId INT NOT NULL REFERENCES Items(Id), ItemName NVARCHAR(100) NOT NULL, Qty INT NOT NULL, UnitPrice DECIMAL(12,2) NOT NULL, DiscountPct DECIMAL(5,2) NOT NULL DEFAULT 0, LineTotal DECIMAL(12,2) NOT NULL)`,
 `IF OBJECT_ID('Settings','U') IS NULL CREATE TABLE Settings([Key] NVARCHAR(50) PRIMARY KEY, [Value] NVARCHAR(200) NOT NULL)`,
@@ -122,6 +122,8 @@ async function initDb() {
       ALTER TABLE Items ADD ItemType NVARCHAR(20) NOT NULL DEFAULT 'Product';
     IF COL_LENGTH('Items', 'IsService') IS NULL
       ALTER TABLE Items ADD IsService BIT NOT NULL DEFAULT 0;
+    IF COL_LENGTH('Items', 'CostPrice') IS NULL
+      ALTER TABLE Items ADD CostPrice DECIMAL(12,2) NULL DEFAULT 0;
     IF COL_LENGTH('Users', 'Permissions') IS NULL
       ALTER TABLE Users ADD Permissions NVARCHAR(500) NULL;
     IF OBJECT_ID('SubscriptionCodes','U') IS NULL
@@ -956,23 +958,27 @@ handle('users:changePassword', ADMIN, async ({ id, newPassword }) => {
 });
 
 handle('items:list', ALL, async () => (await pool.request().query(
-  'SELECT Id, Name, Category, Price, Stock, Barcode, ImageUrl, Active, ISNULL(IsService, 0) AS IsService, ISNULL(ItemType, \'Product\') AS ItemType FROM Items WHERE Active=1 ORDER BY Category,Name'
+  'SELECT Id, Name, Category, Price, ISNULL(CostPrice, 0) AS CostPrice, Stock, Barcode, ImageUrl, Active, ISNULL(IsService, 0) AS IsService, ISNULL(ItemType, \'Product\') AS ItemType FROM Items WHERE Active=1 ORDER BY Category,Name'
 )).recordset);
 
-handle('items:save', MA, async ({ id, name, category, price, stock, barcode, imageUrl, itemType, isService }) => {
+handle('items:save', MA, async ({ id, name, category, price, costPrice, stock, barcode, imageUrl, itemType, isService }) => {
   price = +price; stock = parseInt(stock) || 0;
+  const cost = (costPrice != null && costPrice !== '') ? Math.max(0, +costPrice || 0) : null;
   const isServ = (isService || itemType === 'Service') ? 1 : 0;
   const iType = isServ ? 'Service' : 'Product';
   if (!name?.trim() || !category?.trim()) throw new Error('Name and category are required');
   if (!(price >= 0)) throw new Error('Price must be zero or more');
   if (!isServ && !(stock >= 0)) throw new Error('Stock must be zero or more');
   const rq = pool.request().input('n', sql.NVarChar, name.trim()).input('c', sql.NVarChar, category.trim())
-    .input('p', sql.Decimal(12, 2), price).input('s', sql.Int, isServ ? 0 : stock).input('b', sql.NVarChar, barcode?.trim() || null)
+    .input('p', sql.Decimal(12, 2), price)
+    .input('cp', sql.Decimal(12, 2), cost)
+    .input('s', sql.Int, isServ ? 0 : stock)
+    .input('b', sql.NVarChar, barcode?.trim() || null)
     .input('img', sql.NVarChar, imageUrl?.trim() || null)
     .input('it', sql.NVarChar, iType)
     .input('is', sql.Bit, isServ);
-  if (id) await rq.input('id', sql.Int, id).query('UPDATE Items SET Name=@n,Category=@c,Price=@p,Stock=@s,Barcode=@b,ImageUrl=@img,ItemType=@it,IsService=@is WHERE Id=@id');
-  else await rq.query('INSERT INTO Items(Name,Category,Price,Stock,Barcode,ImageUrl,ItemType,IsService) VALUES(@n,@c,@p,@s,@b,@img,@it,@is)');
+  if (id) await rq.input('id', sql.Int, id).query('UPDATE Items SET Name=@n,Category=@c,Price=@p,CostPrice=@cp,Stock=@s,Barcode=@b,ImageUrl=@img,ItemType=@it,IsService=@is WHERE Id=@id');
+  else await rq.query('INSERT INTO Items(Name,Category,Price,CostPrice,Stock,Barcode,ImageUrl,ItemType,IsService) VALUES(@n,@c,@p,@cp,@s,@b,@img,@it,@is)');
 });
 
 handle('items:delete', MA, async ({ id }) => { // soft delete keeps sales history intact

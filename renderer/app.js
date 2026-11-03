@@ -3723,9 +3723,14 @@ async function vPos() {
 
   // Rapid Keyboard Navigation Workflow (Zero F-Keys Required)
   window.onkeydown = e => {
-    if (tab !== 'pos' || $('.modal-backdrop')) return;
-
+    // Guard: Only run POS keyboard logic when on POS tab and NO modal is open.
+    // Also guard against any focused input/textarea inside a modal backdrop.
     const activeEl = document.activeElement;
+    const hasModalOpen = !!$('.modal-backdrop');
+    const activeInModal = activeEl && activeEl.closest('.modal-backdrop');
+
+    if (tab !== 'pos' || hasModalOpen || activeInModal) return;
+
     const isOtherInput = activeEl && ['INPUT', 'TEXTAREA'].includes(activeEl.tagName) && activeEl.id !== 'q';
 
     // 1. NON-F SHORTCUTS (Alt Key Combos for tools)
@@ -4665,7 +4670,10 @@ async function vItems() {
                   <span>${catIcon(i.Category)}</span> ${esc(i.Category)}
                 </span>
               </td>
-              <td><b>${fmt(i.Price)}</b></td>
+              <td>
+                <b>${fmt(i.Price)}</b>
+                ${i.CostPrice > 0 ? `<small class="muted" style="display:block; font-size:10px; font-weight:700; color:var(--text-dim);">Cost: ${fmt(i.CostPrice)}</small>` : ''}
+              </td>
               <td>
                 ${isServ 
                   ? `<span class="pill" style="background:rgba(99,102,241,0.15); color:#4f46e5; font-weight:800; border:1px solid rgba(99,102,241,0.25);">⚙️ Service</span>`
@@ -4732,16 +4740,23 @@ const itemForm = (it = {}) => {
 
   const cats = getCatNames();
   let isService = !!(it.IsService || it.ItemType === 'Service');
+  let hasCost = !!(it.CostPrice && it.CostPrice > 0);
 
   const m = modal(`
     <div class="modal-header">
-      <h3 class="modal-title">${it.Id ? t('editItem') : t('newItem')}</h3>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <span style="font-size:24px;">${it.Id ? '✏️' : '📦'}</span>
+        <div>
+          <h3 class="modal-title" style="margin:0;">${it.Id ? t('editItem') : t('newItem')}</h3>
+          <small class="muted">Add or update books, stationery, toys & copy/print service rates</small>
+        </div>
+      </div>
       <button class="modal-close-x" data-x>✕</button>
     </div>
 
-    <form id="itemFormModal" class="auth-form" style="gap:12px;">
+    <form id="itemFormModal" class="auth-form" style="gap:14px; margin-top:6px;">
       <!-- Product vs Service Toggle -->
-      <div style="background:var(--bg-input); padding:10px 14px; border-radius:12px; border:1px solid var(--border);">
+      <div style="background:var(--bg-input); padding:10px 14px; border-radius:12px; border:1px solid var(--border-card);">
         <span class="field-label" style="display:block; margin-bottom:8px; font-weight:800;">${t('itemType')} *</span>
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:8px;">
           <button type="button" class="btn btn-sm ${!isService ? 'btn-primary' : 'btn-ghost'} btn-type-toggle" data-type="product" style="font-weight:700;">
@@ -4753,14 +4768,15 @@ const itemForm = (it = {}) => {
         </div>
       </div>
 
+      <!-- Product Name Input -->
       <label class="field-wrap">
         <span class="field-label">${t('name')} *</span>
-        <input id="formItemName" value="${esc(it.Name || '')}" placeholder="e.g. Atlas CR Book 120 Pgs, A4 Double Side Copy, Anime Keytag" required autofocus autocomplete="off">
+        <input id="formItemName" value="${esc(it.Name || '')}" placeholder="e.g. Atlas CR Book 120 Pgs, A4 Double Side Copy, Anime Keytag" required autocomplete="off" style="font-size:14px; font-weight:700; height:44px;">
         <small class="muted" style="font-size:11px;">Typing will automatically suggest category, default price & SKU from bookshop catalog</small>
       </label>
 
       <!-- Auto-Matched Bookshop Preview Box -->
-      <div id="imagePreviewContainer" class="auto-match-preview-card hide" style="background:var(--bg-input); border:1px solid var(--border); padding:10px 14px; border-radius:12px; display:flex; align-items:center; gap:12px;">
+      <div id="imagePreviewContainer" class="auto-match-preview-card hide" style="background:var(--bg-input); border:1px solid var(--border-card); padding:10px 14px; border-radius:12px; display:flex; align-items:center; gap:12px;">
         <span id="previewCatIcon" style="font-size:28px;">📚</span>
         <div style="flex:1;">
           <span class="auto-match-badge" id="previewBadgeText" style="font-size:10px; font-weight:800; color:var(--brand); text-transform:uppercase;">✓ Auto-Matched Preset</span>
@@ -4769,6 +4785,7 @@ const itemForm = (it = {}) => {
         </div>
       </div>
 
+      <!-- Category & Selling Price -->
       <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
         <label class="field-wrap">
           <div style="display:flex; justify-content:space-between; align-items:center;">
@@ -4782,10 +4799,40 @@ const itemForm = (it = {}) => {
         </label>
 
         <label class="field-wrap">
-          <span class="field-label">${t('priceLkr')} *</span>
-          <input id="formItemPrice" type="number" min="0" step="0.5" value="${it.Price != null ? it.Price : ''}" placeholder="0.00" required>
+          <span class="field-label">${t('priceLkr')} (Selling Price) *</span>
+          <input id="formItemPrice" type="number" min="0" step="0.5" value="${it.Price != null ? it.Price : ''}" placeholder="0.00" required style="font-weight:700;">
         </label>
+      </div>
 
+      <!-- Cost Price Section (Default Disabled, Enable with Button) -->
+      <div style="background:var(--bg-input); padding:12px 14px; border-radius:12px; border:1px solid var(--border-card);">
+        <div style="display:flex; justify-content:space-between; align-items:center;">
+          <div style="display:flex; align-items:center; gap:8px;">
+            <span style="font-size:16px;">🏷️</span>
+            <div>
+              <span class="field-label" style="font-weight:800; margin:0;">Cost Price / Buying Price (Optional)</span>
+              <small class="muted" style="display:block; font-size:10.5px;">Enable only if this product has a known purchase cost</small>
+            </div>
+          </div>
+          <button type="button" class="btn btn-sm ${hasCost ? 'btn-primary' : 'btn-ghost'}" id="btnToggleCostPrice" style="padding:4px 10px; font-size:11px; font-weight:800; border-radius:8px;">
+            ${hasCost ? '✓ Cost Price Enabled' : '+ Enable Cost Price'}
+          </button>
+        </div>
+
+        <div id="costPriceFieldWrap" style="${hasCost ? '' : 'display:none;'} margin-top:10px;">
+          <div style="display:flex; gap:10px; align-items:center;">
+            <div style="flex:1;">
+              <input id="formItemCostPrice" type="number" min="0" step="0.5" value="${it.CostPrice != null && it.CostPrice > 0 ? it.CostPrice : ''}" placeholder="Enter Cost Price (LKR)" ${hasCost ? '' : 'disabled'} style="font-weight:700;">
+            </div>
+            <div id="profitMarginPreview" style="font-size:11.5px; font-weight:800; color:var(--text-muted); white-space:nowrap; padding:0 8px;">
+              Margin: --
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Stock Quantity & Barcode/SKU -->
+      <div style="display:grid; grid-template-columns: 1fr 1fr; gap:12px;">
         <label class="field-wrap" id="stockFieldWrap" style="${isService ? 'opacity:0.5; pointer-events:none;' : ''}">
           <span class="field-label">${t('stockQty')} ${isService ? '(Service: Unlimited)' : '*'}</span>
           <input id="formItemStock" type="number" min="0" step="1" value="${it.Stock != null ? it.Stock : 50}" placeholder="0" ${isService ? 'disabled' : 'required'}>
@@ -4800,9 +4847,9 @@ const itemForm = (it = {}) => {
         </label>
       </div>
 
-      <div class="modal-actions" style="margin-top:10px;">
+      <div class="modal-actions" style="margin-top:12px;">
         <button type="button" class="btn btn-ghost" data-x>${t('cancel')}</button>
-        <button type="submit" class="btn btn-primary">${t('save')}</button>
+        <button type="submit" class="btn btn-primary" style="padding:10px 24px; font-weight:800;">✓ ${t('save')}</button>
       </div>
     </form>
   `, true);
@@ -4810,12 +4857,24 @@ const itemForm = (it = {}) => {
   const nameInput = m.querySelector('#formItemName');
   const catInput = m.querySelector('#formItemCategory');
   const priceInput = m.querySelector('#formItemPrice');
+  const costBtn = m.querySelector('#btnToggleCostPrice');
+  const costWrap = m.querySelector('#costPriceFieldWrap');
+  const costInput = m.querySelector('#formItemCostPrice');
+  const marginPreview = m.querySelector('#profitMarginPreview');
   const stockInput = m.querySelector('#formItemStock');
   const barcodeInput = m.querySelector('#formItemBarcode');
   const stockWrap = m.querySelector('#stockFieldWrap');
   const previewBox = m.querySelector('#imagePreviewContainer');
   const previewIcon = m.querySelector('#previewCatIcon');
   const previewTitle = m.querySelector('#previewFoodTitle');
+
+  // Immediately focus nameInput so cashier can type without extra clicks
+  setTimeout(() => {
+    if (nameInput) {
+      nameInput.focus();
+      nameInput.select();
+    }
+  }, 60);
 
   // Toggle Product vs Service
   m.querySelectorAll('.btn-type-toggle').forEach(btn => {
@@ -4841,6 +4900,71 @@ const itemForm = (it = {}) => {
     };
   });
 
+  // Cost Price Toggle & Profit Margin Calculation
+  const updateMargin = () => {
+    if (!hasCost) {
+      marginPreview.textContent = '';
+      return;
+    }
+    const sell = parseFloat(priceInput.value) || 0;
+    const cost = parseFloat(costInput.value) || 0;
+    if (sell > 0 && cost > 0) {
+      const profit = sell - cost;
+      const marginPct = ((profit / sell) * 100).toFixed(1);
+      const isGood = profit >= 0;
+      marginPreview.innerHTML = `<span style="color:${isGood ? '#10b981' : '#ef4444'}; font-weight:800;">${isGood ? 'Profit' : 'Loss'}: LKR ${profit.toFixed(2)} (${marginPct}%)</span>`;
+    } else {
+      marginPreview.textContent = 'Enter selling & cost price to preview profit';
+    }
+  };
+
+  const updateCostVisual = () => {
+    costBtn.className = `btn btn-sm ${hasCost ? 'btn-primary' : 'btn-ghost'}`;
+    costBtn.textContent = hasCost ? '✓ Cost Price Enabled' : '+ Enable Cost Price';
+    costWrap.style.display = hasCost ? 'block' : 'none';
+    costInput.disabled = !hasCost;
+    if (hasCost) {
+      setTimeout(() => {
+        costInput.focus();
+        costInput.select();
+      }, 50);
+    }
+    updateMargin();
+  };
+
+  costBtn.onclick = () => {
+    hasCost = !hasCost;
+    updateCostVisual();
+  };
+
+  priceInput.oninput = updateMargin;
+  costInput.oninput = updateMargin;
+  updateMargin();
+
+  // Keyboard navigation inside modal inputs
+  nameInput.onkeydown = e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      priceInput.focus();
+      priceInput.select();
+    }
+  };
+
+  priceInput.onkeydown = e => {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      if (hasCost && !costInput.value) {
+        costInput.focus();
+        costInput.select();
+      } else if (!isService) {
+        stockInput.focus();
+        stockInput.select();
+      } else {
+        m.querySelector('#itemFormModal').requestSubmit();
+      }
+    }
+  };
+
   // Auto SKU generator for barcode-less items (keytags, toys, loose pens)
   m.querySelector('#btnGenSku').onclick = () => {
     const randomSku = 'BKP-' + Math.floor(100000 + Math.random() * 900000);
@@ -4859,6 +4983,7 @@ const itemForm = (it = {}) => {
     };
   }
 
+  // Safe Catalog Autocomplete (Does NOT steal focus or interrupt typing)
   const onNameChange = () => {
     const val = nameInput.value.trim();
     if (!val) {
@@ -4867,25 +4992,57 @@ const itemForm = (it = {}) => {
     }
 
     if (typeof matchBookshopCatalogItem === 'function') {
-      const match = matchBookshopCatalogItem(val);
-      if (match) {
-        previewIcon.textContent = catIcon(match.category);
-        previewTitle.textContent = match.name;
-        previewBox.classList.remove('hide');
-        if (!catInput.value || catInput.value === 'Stationery') catInput.value = match.category;
-        if (!priceInput.value) priceInput.value = match.defaultPrice;
-        if (!barcodeInput.value && match.barcode) barcodeInput.value = match.barcode;
-        if (match.isService && !isService) {
-          const servBtn = m.querySelector('.btn-type-toggle[data-type="service"]');
-          if (servBtn) servBtn.click();
+      try {
+        const match = matchBookshopCatalogItem(val);
+        if (match) {
+          previewIcon.textContent = catIcon(match.category);
+          previewTitle.textContent = match.name;
+          previewBox.classList.remove('hide');
+          if (!catInput.value || catInput.value === 'Stationery') catInput.value = match.category;
+          if (!priceInput.value) {
+            priceInput.value = match.defaultPrice;
+            updateMargin();
+          }
+          if (!barcodeInput.value && match.barcode) barcodeInput.value = match.barcode;
+          if (match.isService && !isService) {
+            isService = true;
+            m.querySelectorAll('.btn-type-toggle').forEach(b => {
+              const active = b.dataset.type === 'service';
+              b.classList.toggle('btn-primary', active);
+              b.classList.toggle('btn-ghost', !active);
+            });
+            stockInput.disabled = true;
+            stockInput.value = '0';
+            stockWrap.style.opacity = '0.5';
+            stockWrap.style.pointerEvents = 'none';
+          }
+          return;
         }
-        return;
+      } catch (err) {
+        console.warn('Auto match note:', err);
       }
     }
     previewBox.classList.add('hide');
   };
 
   nameInput.oninput = onNameChange;
+
+  // CRITICAL FIX: Block ALL keydown events from the modal form reaching the
+  // global window.onkeydown POS handler. The global handler checks for
+  // $('.modal-backdrop') but Electron's event dispatch can still interfere.
+  const formEl = m.querySelector('#itemFormModal');
+  if (formEl) {
+    formEl.addEventListener('keydown', e => {
+      e.stopPropagation(); // Prevent key events from reaching window.onkeydown
+    }, true); // Capture phase: runs before any bubbling
+  }
+  // Also block at backdrop level for full safety
+  m.addEventListener('keydown', e => {
+    const tag = e.target?.tagName;
+    if (['INPUT', 'TEXTAREA', 'SELECT'].includes(tag)) {
+      e.stopPropagation();
+    }
+  }, true);
 
   m.querySelectorAll('[data-x]').forEach(el => el.onclick = m.close);
 
@@ -4894,6 +5051,7 @@ const itemForm = (it = {}) => {
     const name = nameInput.value.trim();
     const category = catInput.value.trim();
     const price = parseFloat(priceInput.value) || 0;
+    const costPrice = hasCost ? (parseFloat(costInput.value) || 0) : null;
     const stock = isService ? 0 : (parseInt(stockInput.value) || 0);
     const barcode = barcodeInput.value.trim();
 
@@ -4903,6 +5061,7 @@ const itemForm = (it = {}) => {
         name,
         category,
         price,
+        costPrice,
         stock,
         barcode,
         isService: isService,
