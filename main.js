@@ -1,6 +1,8 @@
 const { app, BrowserWindow, ipcMain, dialog, shell } = require('electron');
 const path = require('path');
 const fs = require('fs');
+const https = require('https');
+const http = require('http');
 const sql = require('mssql');
 const bcrypt = require('bcryptjs');
 
@@ -781,6 +783,23 @@ async function performDatabaseBackup() {
   await setSetting('lastBackupFile', bakSuccess ? bakFileName : jsonFileName);
   await setSetting('lastBackupSize', String(bakSuccess ? bakSize : jsonSize));
 
+  // ☁️ Auto Cloud Upload — if Google Drive sync is enabled and JSON backup succeeded
+  if (jsonSuccess && jsonFilePath) {
+    try {
+      const cs = await getSettings();
+      if (cs.googleDriveEnabled === 'true' && cs.googleDriveToken) {
+        console.log('[CloudBackup] Uploading to Google Drive...');
+        await uploadBackupToGoogleDrive(jsonFilePath);
+        await setSetting('lastCloudBackupTime', isoNow);
+        await setSetting('lastCloudBackupStatus', 'Success');
+        console.log('[CloudBackup] Upload complete.');
+      }
+    } catch (cloudErr) {
+      console.error('[CloudBackup] Upload failed:', cloudErr.message);
+      await setSetting('lastCloudBackupStatus', 'Error: ' + cloudErr.message.substring(0, 120));
+    }
+  }
+
   return {
     success,
     dateStr,
@@ -922,6 +941,310 @@ handle('backup:openFolder', MA, async () => {
   }
   await shell.openPath(bPath);
   return true;
+});
+
+/* ==========================================================================
+   GOOGLE DRIVE CLOUD BACKUP SYSTEM
+   Uses Google Drive REST API v3 via built-in Node.js https module (no extra deps).
+   OAuth2 flow: browser → localhost callback → token exchange → refresh stored in DB.
+   ========================================================================== */
+
+// NOTE: These credentials are read from Settings so each shop owner configures their own.
+// Setup: Google Cloud Console → Create Project → Enable Drive API → Create OAuth2 Desktop credentials
+// Redirect URI must be: http://localhost:42813/oauth/google
+const GDRIVE_REDIRECT = 'http://localhost:42813/oauth/google';
+const GDRIVE_SCOPE = 'https://www.googleapis.com/auth/drive.file';
+const GDRIVE_AUTH_URL = 'https://accounts.google.com/o/oauth2/v2/auth';
+const GDRIVE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
+const GDRIVE_UPLOAD_URL = 'https://www.googleapis.com/upload/drive/v3/files';
+const GDRIVE_FILES_URL = 'https://www.googleapis.com/drive/v3/files';
+const GDRIVE_USERINFO_URL = 'https://www.googleapis.com/oauth2/v3/userinfo';
+
+// Simple HTTPS request helper (returns parsed JSON)
+function httpsRequest(options, postData) {
+  return new Promise((resolve, reject) => {
+    const req = https.request(options, (res) => {
+      let data = '';
+      res.on('data', (chunk) => { data += chunk; });
+      res.on('end', () => {
+        try {
+          resolve({ statusCode: res.statusCode, body: JSON.parse(data) });
+        } catch {
+          resolve({ statusCode: res.statusCode, body: data });
+        }
+      });
+    });
+    req.on('error', reject);
+    if (postData) req.write(postData);
+    req.end();
+  });
+}
+
+// Exchange authorization code for tokens
+async function gdriveExchangeCode(code, clientId, clientSecret) {
+  const body = new URLSearchParams({
+    code,
+    client_id: clientId,
+    client_secret: clientSecret,
+    redirect_uri: GDRIVE_REDIRECT,
+    grant_type: 'authorization_code'
+  }).toString();
+  const res = await httpsRequest({
+    hostname: 'oauth2.googleapis.com',
+    path: '/token',
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) }
+  }, body);
+  if (res.statusCode !== 200 || res.body.error) throw new Error(res.body.error_description || res.body.error || 'Token exchange failed');
+  return res.body; // { access_token, refresh_token, token_type, expires_in }
+}
+
+// Get new access token using refresh token
+async function gdriveRefreshAccessToken(refreshToken, clientId, clientSecret) {
+  const body = new URLSearchParams({
+    refresh_token: refreshToken,
+    client_id: clientId,
+    client_secret: clientSecret,
+    grant_type: 'refresh_token'
+  }).toString();
+  const res = await httpsRequest({
+    hostname: 'oauth2.googleapis.com',
+    path: '/token',
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded', 'Content-Length': Buffer.byteLength(body) }
+  }, body);
+  if (res.statusCode !== 200 || res.body.error) throw new Error(res.body.error_description || res.body.error || 'Token refresh failed');
+  return res.body.access_token;
+}
+
+// Get Google account email using access token
+async function gdriveGetUserEmail(accessToken) {
+  const res = await httpsRequest({
+    hostname: 'www.googleapis.com',
+    path: '/oauth2/v3/userinfo',
+    method: 'GET',
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  return res.body.email || res.body.name || 'Unknown Account';
+}
+
+// Upload file to Google Drive using multipart upload
+async function gdriveUploadFile(accessToken, filePath, fileName, folderId) {
+  const fileContent = fs.readFileSync(filePath);
+  const mimeType = 'application/json';
+  const metadata = { name: fileName, mimeType };
+  if (folderId) metadata.parents = [folderId];
+  const metaStr = JSON.stringify(metadata);
+  const boundary = '---BookShopPOS_boundary_xyz987';
+  const bodyParts = [
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${metaStr}\r\n`,
+    `--${boundary}\r\nContent-Type: ${mimeType}\r\n\r\n`,
+    fileContent,
+    `\r\n--${boundary}--`
+  ];
+  // Build the full body as a Buffer
+  const buffers = bodyParts.map(p => Buffer.isBuffer(p) ? p : Buffer.from(p, 'utf8'));
+  const fullBody = Buffer.concat(buffers);
+
+  // Check if file already exists (to update instead of create new)
+  const searchQuery = encodeURIComponent(`name='${fileName}'${folderId ? ` and '${folderId}' in parents` : ''} and trashed=false`);
+  const searchRes = await httpsRequest({
+    hostname: 'www.googleapis.com',
+    path: `/drive/v3/files?q=${searchQuery}&fields=files(id,name)`,
+    method: 'GET',
+    headers: { 'Authorization': `Bearer ${accessToken}` }
+  });
+  const existingFiles = (searchRes.body.files || []);
+  const existingId = existingFiles.length > 0 ? existingFiles[0].id : null;
+
+  let uploadPath, uploadMethod;
+  if (existingId) {
+    // Update existing file (PATCH)
+    uploadPath = `/upload/drive/v3/files/${existingId}?uploadType=multipart`;
+    uploadMethod = 'PATCH';
+  } else {
+    // Create new file
+    uploadPath = '/upload/drive/v3/files?uploadType=multipart';
+    uploadMethod = 'POST';
+  }
+
+  const uploadRes = await httpsRequest({
+    hostname: 'www.googleapis.com',
+    path: uploadPath,
+    method: uploadMethod,
+    headers: {
+      'Authorization': `Bearer ${accessToken}`,
+      'Content-Type': `multipart/related; boundary=${boundary}`,
+      'Content-Length': fullBody.length
+    }
+  }, fullBody);
+
+  if (uploadRes.statusCode !== 200 && uploadRes.statusCode !== 201) {
+    throw new Error(`Drive upload failed (${uploadRes.statusCode}): ${JSON.stringify(uploadRes.body)}`);
+  }
+  return uploadRes.body; // { id, name, ... }
+}
+
+// Main cloud upload function — called after each local backup
+async function uploadBackupToGoogleDrive(jsonFilePath) {
+  const s = await getSettings();
+  const clientId = (s.googleDriveClientId || '').trim();
+  const clientSecret = (s.googleDriveClientSecret || '').trim();
+  const refreshToken = (s.googleDriveToken || '').trim();
+  const folderId = (s.googleDriveFolderId || '').trim() || null;
+
+  if (!clientId || !clientSecret) throw new Error('Google Drive credentials not configured. Enter Client ID & Secret in Cloud Backup settings.');
+  if (!refreshToken) throw new Error('Not connected to Google Drive. Please connect your Google account first.');
+  if (!fs.existsSync(jsonFilePath)) throw new Error('Backup file not found: ' + jsonFilePath);
+
+  const accessToken = await gdriveRefreshAccessToken(refreshToken, clientId, clientSecret);
+  const fileName = path.basename(jsonFilePath);
+  const result = await gdriveUploadFile(accessToken, jsonFilePath, fileName, folderId || null);
+  return result;
+}
+
+// OAuth local callback server (one-shot, self-closing)
+let oauthServer = null;
+function startOAuthServer(clientId, clientSecret) {
+  return new Promise((resolve, reject) => {
+    if (oauthServer) { try { oauthServer.close(); } catch {} oauthServer = null; }
+    oauthServer = http.createServer(async (req, res) => {
+      try {
+        const url = new URL('http://localhost:42813' + req.url);
+        if (url.pathname !== '/oauth/google') { res.end('Not found'); return; }
+        const code = url.searchParams.get('code');
+        const error = url.searchParams.get('error');
+        if (error) {
+          res.writeHead(200, { 'Content-Type': 'text/html' });
+          res.end(`<html><body style="font-family:sans-serif;text-align:center;padding:60px;"><h2 style="color:#e53e3e">❌ Authorization Cancelled</h2><p>${error}</p><p>You can close this window.</p></body></html>`);
+          oauthServer.close(); oauthServer = null;
+          reject(new Error('OAuth cancelled: ' + error));
+          return;
+        }
+        if (!code) { res.end('No code'); return; }
+        // Exchange code for tokens
+        const tokens = await gdriveExchangeCode(code, clientId, clientSecret);
+        // Get email
+        let email = 'Unknown';
+        try { email = await gdriveGetUserEmail(tokens.access_token); } catch {}
+        // Save tokens to settings
+        await setSetting('googleDriveToken', tokens.refresh_token || '');
+        await setSetting('googleDriveEmail', email);
+        await setSetting('googleDriveEnabled', 'true');
+        res.writeHead(200, { 'Content-Type': 'text/html' });
+        res.end(`<html><body style="font-family:sans-serif;text-align:center;padding:60px;background:#f0fff4;"><h2 style="color:#276749">✅ Google Drive Connected!</h2><p>Connected as: <b>${email}</b></p><p>You can close this window and return to BookShop POS.</p><script>setTimeout(()=>window.close(),3000)</script></body></html>`);
+        oauthServer.close(); oauthServer = null;
+        resolve({ email, refreshToken: tokens.refresh_token });
+      } catch (err) {
+        res.writeHead(500, { 'Content-Type': 'text/html' });
+        res.end(`<html><body style="font-family:sans-serif;text-align:center;padding:60px;"><h2 style="color:#e53e3e">❌ Error</h2><p>${err.message}</p></body></html>`);
+        oauthServer.close(); oauthServer = null;
+        reject(err);
+      }
+    });
+    oauthServer.listen(42813, '127.0.0.1', () => {
+      // Build OAuth URL and open in browser
+      const params = new URLSearchParams({
+        client_id: clientId,
+        redirect_uri: GDRIVE_REDIRECT,
+        response_type: 'code',
+        scope: GDRIVE_SCOPE,
+        access_type: 'offline',
+        prompt: 'consent'
+      });
+      shell.openExternal(`${GDRIVE_AUTH_URL}?${params.toString()}`);
+    });
+    oauthServer.on('error', (err) => {
+      reject(new Error('Could not start OAuth server: ' + err.message));
+    });
+    // Timeout after 5 minutes
+    setTimeout(() => {
+      if (oauthServer) { oauthServer.close(); oauthServer = null; }
+      reject(new Error('OAuth timeout: no response within 5 minutes.'));
+    }, 5 * 60 * 1000);
+  });
+}
+
+// IPC: Get cloud backup status
+handle('backup:getCloudStatus', MA, async () => {
+  const s = await getSettings();
+  return {
+    enabled: s.googleDriveEnabled === 'true',
+    connected: !!(s.googleDriveToken && s.googleDriveToken.trim()),
+    email: s.googleDriveEmail || null,
+    lastCloudBackupTime: s.lastCloudBackupTime || null,
+    lastCloudBackupStatus: s.lastCloudBackupStatus || null,
+    folderId: s.googleDriveFolderId || '',
+    hasCredentials: !!(s.googleDriveClientId && s.googleDriveClientSecret),
+    clientId: s.googleDriveClientId ? s.googleDriveClientId.substring(0, 8) + '...' : '',
+    fullClientId: s.googleDriveClientId || '',
+    hasClientSecret: !!s.googleDriveClientSecret
+  };
+});
+
+// IPC: Save Google OAuth2 credentials (Client ID + Secret)
+handle('backup:saveGoogleCredentials', MA, async ({ clientId, clientSecret }) => {
+  if (!clientId) throw new Error('Client ID is required');
+  const s = await getSettings();
+  await setSetting('googleDriveClientId', clientId.trim());
+  if (clientSecret && clientSecret !== '••••••••••••••••') {
+    await setSetting('googleDriveClientSecret', clientSecret.trim());
+  } else if (!s.googleDriveClientSecret) {
+    throw new Error('Client Secret is required');
+  }
+  return { ok: true };
+});
+
+// IPC: Start OAuth2 flow → open browser → wait for callback
+handle('backup:googleConnect', MA, async () => {
+  const s = await getSettings();
+  const clientId = (s.googleDriveClientId || '').trim();
+  const clientSecret = (s.googleDriveClientSecret || '').trim();
+  if (!clientId || !clientSecret) throw new Error('Please save your Google Client ID & Secret first before connecting.');
+  const result = await startOAuthServer(clientId, clientSecret);
+  return result;
+});
+
+// IPC: Disconnect Google Drive
+handle('backup:googleDisconnect', MA, async () => {
+  await setSetting('googleDriveToken', '');
+  await setSetting('googleDriveEmail', '');
+  await setSetting('googleDriveEnabled', 'false');
+  await setSetting('lastCloudBackupStatus', '');
+  return { ok: true };
+});
+
+// IPC: Toggle auto cloud sync on/off
+handle('backup:googleSetEnabled', MA, async ({ enabled }) => {
+  await setSetting('googleDriveEnabled', enabled ? 'true' : 'false');
+  return { ok: true };
+});
+
+// IPC: Set Drive folder ID
+handle('backup:googleSetFolder', MA, async ({ folderId }) => {
+  await setSetting('googleDriveFolderId', (folderId || '').trim());
+  return { ok: true };
+});
+
+// IPC: Manual "Upload Now"
+handle('backup:googleUploadNow', MA, async () => {
+  // Find today's JSON backup file
+  const s = await getSettings();
+  const folder = (s.backupPath || '').trim() || getDefaultBackupPath();
+  const now = new Date();
+  const pad = n => String(n).padStart(2, '0');
+  const dateStr = `${now.getFullYear()}-${pad(now.getMonth() + 1)}-${pad(now.getDate())}`;
+  const jsonFilePath = path.join(folder, `BookShop_Backup_${dateStr}.json`);
+  if (!fs.existsSync(jsonFilePath)) {
+    // Run a backup first to generate the JSON file
+    const backupResult = await performDatabaseBackup();
+    if (!backupResult.jsonSuccess) throw new Error('Could not create backup file to upload.');
+  }
+  const result = await uploadBackupToGoogleDrive(jsonFilePath);
+  const isoNow = new Date().toISOString();
+  await setSetting('lastCloudBackupTime', isoNow);
+  await setSetting('lastCloudBackupStatus', 'Success');
+  return { ok: true, fileId: result.id, fileName: result.name, uploadedAt: isoNow };
 });
 
 handle('users:list', ADMIN, async () => (await pool.request().query('SELECT Id,Username,FullName,Role,Active,Permissions FROM Users ORDER BY Id')).recordset);

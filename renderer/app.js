@@ -43,6 +43,17 @@ const D = {
   backupSuccess: ['Database backup completed successfully!', 'දත්ත සමුදාය සාර්ථකව බැකප් කරන ලදී!'],
   todayBackupCard: ["Today's Active Daily Backup", 'අද දින ක්‍රියාකාරී බැකප් ගොනුව'],
   historyBackups: ['Backup Archives & Daily Snapshots', 'පෙර දිනවල බැකප් ගොනු ලේඛනාගාරය'],
+  // Cloud Backup strings
+  cloudBackupTitle: ['☁️ Cloud Backup — Google Drive Sync', '☁️ Cloud Backup — Google Drive සමමුහුර්ත'],
+  cloudBackupSub: ['Automatically upload each daily backup to your Google Drive for off-site protection', 'ඔබගේ Google Drive ට ස්වයංක්‍රීයව දෛනික බැකප් සමකාලීන කරන්න'],
+  connectGoogle: ['🔗 Connect Google Account', 'Google ගිණුම සම්බන්ධ කරන්න'],
+  googleConnected: ['✅ Google Drive Connected', '✅ Google Drive සම්බන්ධ වී ඇත'],
+  disconnectCloud: ['Disconnect', 'විසන්ධි කරන්න'],
+  uploadNow: ['⬆️ Upload Now', '⬆️ දැන් Upload කරන්න'],
+  autoSyncLabel: ['Auto-sync after every backup', 'සෑම බැකප්එකකට පසු ස්වයංක්‍රීය sync'],
+  cloudLastUpload: ['Last Cloud Upload', 'අවසාන Cloud Upload'],
+  cloudStatus: ['Cloud Status', 'Cloud තත්ත්වය'],
+  howToSetup: ['How to set up Google Drive Backup', 'Google Drive Backup සකසන ආකාරය'],
   fileName: ['File Name', 'ගොනු නම'],
   fileSize: ['File Size', 'ගොනු ප්‍රමාණය'],
   lastUpdated: ['Last Updated', 'අවසන් වරට යාවත්කාලීන කළ වේලාව'],
@@ -4528,7 +4539,198 @@ async function vBackup() {
     </div>
   `;
 
-  // Event Listeners
+  // ── Append Cloud Backup section ──────────────────────────────────────────
+  let cloud = { enabled: false, connected: false, email: null, lastCloudBackupTime: null, lastCloudBackupStatus: null, folderId: '', hasCredentials: false, clientId: '' };
+  try { cloud = await call('backup:getCloudStatus'); } catch {}
+
+  const cloudSection = document.createElement('div');
+  cloudSection.id = 'cloudBackupSection';
+  cloudSection.innerHTML = `
+    <div class="cloud-backup-card" style="margin-bottom:20px;">
+      <div class="panel-header-row" style="margin-bottom:16px;">
+        <div>
+          <h3 style="margin:0; font-size:17px; font-weight:800; display:flex; align-items:center; gap:8px;">
+            <span style="font-size:22px;">☁️</span> ${t('cloudBackupTitle')}
+          </h3>
+          <small class="muted">${t('cloudBackupSub')}</small>
+        </div>
+        <span class="pill ${cloud.connected ? 'ok' : 'warn'}" style="font-size:11px; font-weight:800; padding:4px 12px;">
+          ${cloud.connected ? '● CONNECTED' : '○ NOT CONNECTED'}
+        </span>
+      </div>
+
+      ${cloud.connected ? `
+      <!-- Connected state -->
+      <div class="cloud-account-row" style="display:flex; align-items:center; gap:12px; flex-wrap:wrap; margin-bottom:16px; padding:14px 16px; border-radius:10px; background:rgba(72,187,120,0.08); border:1px solid rgba(72,187,120,0.3);">
+        <div style="width:38px; height:38px; border-radius:50%; background:linear-gradient(135deg,#4285F4,#34A853); display:flex; align-items:center; justify-content:center; font-size:18px; flex-shrink:0;">🔒</div>
+        <div style="flex:1; min-width:140px;">
+          <div style="font-weight:700; font-size:14px;">${esc(cloud.email || 'Google Account')}</div>
+          <small class="muted">Google Drive connected</small>
+        </div>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button class="btn btn-sm btn-primary" id="btnCloudUploadNow">⬆️ Upload Now</button>
+          <button class="btn btn-sm btn-ghost" id="btnCloudDisconnect" style="color:var(--danger);">Disconnect</button>
+        </div>
+      </div>
+      ` : `
+      <!-- Not connected state -->
+      <div style="padding:14px 16px; border-radius:10px; background:rgba(237,137,54,0.08); border:1px solid rgba(237,137,54,0.25); margin-bottom:16px; font-size:13px; color:var(--text-muted); line-height:1.6;">
+        Connect your Google account to automatically sync backups to your Drive after every hourly backup. Your data stays safe even if this PC's hard drive fails.
+      </div>
+      `}
+
+      <!-- Status row -->
+      <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:12px; margin-bottom:16px;">
+        <div style="padding:12px 14px; border-radius:9px; background:var(--bg-card-subtle); border:1px solid var(--border-card);">
+          <div class="muted small" style="font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">☁️ Last Cloud Upload</div>
+          <div style="font-weight:700; font-size:13px;">${cloud.lastCloudBackupTime ? new Date(cloud.lastCloudBackupTime).toLocaleString() : 'Never'}</div>
+          <small class="muted">${cloud.lastCloudBackupStatus || 'No uploads yet'}</small>
+        </div>
+        <div style="padding:12px 14px; border-radius:9px; background:var(--bg-card-subtle); border:1px solid var(--border-card);">
+          <div class="muted small" style="font-weight:700; text-transform:uppercase; letter-spacing:0.5px; margin-bottom:4px;">📂 Drive Folder ID</div>
+          <input id="txtDriveFolderId" value="${esc(cloud.folderId || '')}" placeholder="Leave blank = My Drive root" style="width:100%; font-size:12px; font-family:monospace; padding:6px 10px; border-radius:6px; background:var(--bg-card-subtle); border:1px solid var(--border-card); color:var(--text-main);">
+          <small class="muted">Paste Google Drive folder ID (from URL)</small>
+        </div>
+        <div style="padding:12px 14px; border-radius:9px; background:var(--bg-card-subtle); border:1px solid var(--border-card); display:flex; flex-direction:column; gap:6px; justify-content:center;">
+          <div class="muted small" style="font-weight:700; text-transform:uppercase; letter-spacing:0.5px;">⚡ Auto-Sync</div>
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer; font-weight:600; font-size:13px;">
+            <div class="cloud-toggle-wrap">
+              <input type="checkbox" id="chkCloudAutoSync" ${cloud.enabled ? 'checked' : ''} ${!cloud.connected ? 'disabled' : ''} style="display:none;">
+              <div class="cloud-toggle-track" id="cloudToggleTrack" style="width:42px;height:24px;border-radius:12px;background:${cloud.enabled ? '#38a169' : '#cbd5e0'};position:relative;cursor:pointer;transition:background 0.2s;">
+                <div style="width:18px;height:18px;border-radius:50%;background:#fff;position:absolute;top:3px;left:${cloud.enabled ? '21px' : '3px'};transition:left 0.2s;box-shadow:0 1px 4px rgba(0,0,0,0.25);"></div>
+              </div>
+            </div>
+            <span>${cloud.enabled ? 'Auto-sync ON' : 'Auto-sync OFF'}</span>
+          </label>
+          <small class="muted">Upload after every hourly backup</small>
+        </div>
+      </div>
+
+      <!-- Google OAuth2 Credentials (collapsible setup) -->
+      <details id="cloudCredDetails" ${!cloud.hasCredentials ? 'open' : ''} style="border:1px solid var(--border-card); border-radius:10px; overflow:hidden;">
+        <summary style="padding:12px 16px; font-weight:700; font-size:13px; cursor:pointer; background:var(--bg-card-subtle); list-style:none; display:flex; align-items:center; gap:8px;">
+          <span>⚙️</span>
+          <span>${cloud.hasCredentials ? '✓ Google API Credentials Saved  (click to update)' : '🔑 Step 1 — Enter Google API Credentials'}</span>
+        </summary>
+        <div style="padding:16px; background:var(--bg-card);">
+          <div style="padding:12px 14px; border-radius:8px; background:rgba(91,82,249,0.07); border:1px solid rgba(91,82,249,0.18); font-size:12.5px; line-height:1.7; margin-bottom:14px;">
+            <b>📋 One-time setup (takes ~5 minutes):</b>
+            <ol style="margin:6px 0 0; padding-left:18px; color:var(--text-muted);">
+              <li>Go to <b>console.cloud.google.com</b> → Create a new project</li>
+              <li>Enable the <b>Google Drive API</b> from Library</li>
+              <li>Go to <b>APIs &amp; Services → Credentials → Create OAuth 2.0 Client ID</b></li>
+              <li>Application type: <b>Desktop App</b> → Download the credentials</li>
+              <li>Under <b>OAuth consent screen</b>, add your Gmail as a Test User</li>
+              <li>Paste the <b>Client ID</b> and <b>Client Secret</b> below</li>
+            </ol>
+          </div>
+          <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-bottom:10px;">
+            <div>
+              <label class="form-label" style="font-size:12px; font-weight:700;">Client ID</label>
+              <input id="txtGClientId" type="text" value="${esc(cloud.fullClientId || '')}" placeholder="xxxx.apps.googleusercontent.com" style="width:100%; font-size:12px; padding:8px 10px; border-radius:7px; background:var(--bg-card-subtle); border:1px solid var(--border-card); color:var(--text-main); font-family:monospace;">
+            </div>
+            <div>
+              <label class="form-label" style="font-size:12px; font-weight:700;">Client Secret</label>
+              <input id="txtGClientSecret" type="password" value="${cloud.hasClientSecret ? '••••••••••••••••' : ''}" placeholder="GOCSPX-..." style="width:100%; font-size:12px; padding:8px 10px; border-radius:7px; background:var(--bg-card-subtle); border:1px solid var(--border-card); color:var(--text-main); font-family:monospace;">
+            </div>
+          </div>
+          <button class="btn btn-secondary btn-sm" id="btnSaveCredentials">💾 Save Credentials</button>
+          ${cloud.hasCredentials ? `<span style="margin-left:10px; font-size:12px; color:#38a169; font-weight:600;">✓ Credentials saved (ID: ${esc(cloud.clientId)})</span>` : ''}
+        </div>
+      </details>
+
+      ${cloud.hasCredentials && !cloud.connected ? `
+      <div style="margin-top:14px; text-align:center;">
+        <button class="btn btn-primary" id="btnConnectGoogle" style="font-size:15px; padding:12px 28px;">
+          <span style="margin-right:8px;">🔗</span> Connect Google Account
+        </button>
+        <p class="muted" style="margin:8px 0 0; font-size:12px;">A browser window will open for Google sign-in. Return here after approval.</p>
+      </div>
+      ` : ''}
+    </div>
+  `;
+  $('#view').appendChild(cloudSection);
+
+  // Cloud section event handlers
+  const btnSaveCreds = $('#btnSaveCredentials');
+  if (btnSaveCreds) {
+    btnSaveCreds.onclick = async () => {
+      const cid = $('#txtGClientId').value.trim();
+      const csec = $('#txtGClientSecret').value.trim();
+      if (!cid || (!csec && !cloud.hasClientSecret)) { toast('Enter both Client ID and Client Secret', 1); return; }
+      try {
+        btnSaveCreds.disabled = true; btnSaveCreds.textContent = '⏳ Saving…';
+        await call('backup:saveGoogleCredentials', { clientId: cid, clientSecret: csec });
+        toast('✅ Credentials saved! Now click Connect Google Account.');
+        await vBackup();
+      } catch (e) { toast(e.message, 1); btnSaveCreds.disabled = false; btnSaveCreds.innerHTML = '💾 Save Credentials'; }
+    };
+  }
+
+  const btnConnect = $('#btnConnectGoogle');
+  if (btnConnect) {
+    btnConnect.onclick = async () => {
+      try {
+        btnConnect.disabled = true; btnConnect.innerHTML = '⏳ Opening browser…';
+        toast('Opening Google sign-in in your browser…');
+        const res = await call('backup:googleConnect');
+        toast(`✅ Connected as ${res.email}!`);
+        await vBackup();
+      } catch (e) { toast(e.message, 1); await vBackup(); }
+    };
+  }
+
+  const btnDisconnect = $('#btnCloudDisconnect');
+  if (btnDisconnect) {
+    btnDisconnect.onclick = async () => {
+      if (!confirm('Disconnect Google Drive? Auto-sync will stop.')) return;
+      try {
+        await call('backup:googleDisconnect');
+        toast('Google Drive disconnected.');
+        await vBackup();
+      } catch (e) { toast(e.message, 1); }
+    };
+  }
+
+  const btnUploadNow = $('#btnCloudUploadNow');
+  if (btnUploadNow) {
+    btnUploadNow.onclick = async () => {
+      try {
+        btnUploadNow.disabled = true; btnUploadNow.innerHTML = '⏳ Uploading…';
+        const res = await call('backup:googleUploadNow');
+        toast(`✅ Uploaded: ${res.fileName}`);
+        await vBackup();
+      } catch (e) { toast(e.message, 1); btnUploadNow.disabled = false; btnUploadNow.innerHTML = '⬆️ Upload Now'; }
+    };
+  }
+
+  const toggleTrack = $('#cloudToggleTrack');
+  const chkAutoSync = $('#chkCloudAutoSync');
+  if (toggleTrack && chkAutoSync) {
+    toggleTrack.onclick = async () => {
+      if (chkAutoSync.disabled) return;
+      const newVal = !chkAutoSync.checked;
+      try {
+        await call('backup:googleSetEnabled', { enabled: newVal });
+        toast(newVal ? 'Auto cloud sync enabled.' : 'Auto cloud sync disabled.');
+        await vBackup();
+      } catch (e) { toast(e.message, 1); }
+    };
+  }
+
+  const folderInput = $('#txtDriveFolderId');
+  if (folderInput) {
+    let folderSaveTimer = null;
+    folderInput.onchange = async () => {
+      clearTimeout(folderSaveTimer);
+      folderSaveTimer = setTimeout(async () => {
+        try {
+          await call('backup:googleSetFolder', { folderId: folderInput.value.trim() });
+          toast('Drive folder ID saved.');
+        } catch (e) { toast(e.message, 1); }
+      }, 800);
+    };
+  }
   const triggerBackup = async (btn) => {
     try {
       if (btn) {
